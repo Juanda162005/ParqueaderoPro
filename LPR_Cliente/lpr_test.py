@@ -67,6 +67,11 @@ LPR_PASSWORD = os.getenv("LPR_PASSWORD", "admin123")
 CODIGO_AUTENTICACION_FALLIDA = 2
 CAMERA_ROLE = os.getenv("CAMERA_ROLE", "auto").strip().lower()
 LPR_DEBUG = os.getenv("LPR_DEBUG", "0").strip().lower() in {"1", "true", "si", "sí"}
+ROI_X1 = float(os.getenv("LPR_ROI_X1", "0.08"))
+ROI_Y1 = float(os.getenv("LPR_ROI_Y1", "0.08"))
+ROI_X2 = float(os.getenv("LPR_ROI_X2", "0.92"))
+ROI_Y2 = float(os.getenv("LPR_ROI_Y2", "0.92"))
+OCR_MIN_CONFIDENCE = float(os.getenv("LPR_OCR_MIN_CONFIDENCE", "0.30"))
 if CAMERA_ROLE not in {"entrada", "salida", "auto"}:
     raise ValueError("CAMERA_ROLE debe ser entrada, salida o auto")
 # Si quieres que el LPR registre en un tenant específico, usa: LPR_USERNAME=admin@parqueadero-norte
@@ -235,6 +240,17 @@ def limpiar_texto_ocr(texto: str) -> str:
     return texto
 
 
+def recortar_roi_lpr(frame):
+    """Limita el OCR al recuadro mostrado al operador."""
+    alto, ancho = frame.shape[:2]
+    x1 = max(0, min(ancho - 1, int(ancho * ROI_X1)))
+    y1 = max(0, min(alto - 1, int(alto * ROI_Y1)))
+    x2 = max(x1 + 1, min(ancho, int(ancho * ROI_X2)))
+    y2 = max(y1 + 1, min(alto, int(alto * ROI_Y2)))
+    roi = frame[y1:y2, x1:x2]
+    return roi if roi.size else frame
+
+
 def preprocesar_para_ocr(frame):
     """
     Preprocesamiento rápido y efectivo para placas colombianas.
@@ -253,16 +269,24 @@ def preprocesar_para_ocr(frame):
     gris = cv2.cvtColor(recorte, cv2.COLOR_BGR2GRAY)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)).apply(gris)
     suavizado = cv2.GaussianBlur(clahe, (3, 3), 0)
+    nitido = cv2.addWeighted(clahe, 1.7, suavizado, -0.7, 0)
     _, otsu = cv2.threshold(suavizado, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     adaptativo = cv2.adaptiveThreshold(
-        suavizado, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        nitido, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY, 31, 7,
     )
+    negro = cv2.morphologyEx(
+        suavizado,
+        cv2.MORPH_BLACKHAT,
+        cv2.getStructuringElement(cv2.MORPH_RECT, (17, 5)),
+    )
+    _, negro = cv2.threshold(negro, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     return (
-        cv2.resize(recorte, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC),
-        cv2.resize(gris, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC),
-        cv2.resize(otsu, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC),
-        cv2.resize(adaptativo, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC),
+        cv2.resize(recorte, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_LANCZOS4),
+        cv2.resize(nitido, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC),
+        cv2.resize(otsu, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC),
+        cv2.resize(adaptativo, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC),
+        cv2.resize(negro, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC),
     )
 
 
@@ -296,7 +320,8 @@ def procesar_imagen_silencioso(frame):
         return None
 
     votos: Dict[str, float] = defaultdict(float)
-    for region in extraer_regiones_placa(frame):
+    frame_roi = recortar_roi_lpr(frame)
+    for region in extraer_regiones_placa(frame_roi):
         if region is None or getattr(region, "size", 0) == 0:
             continue
         for imagen in preprocesar_para_ocr(region):
@@ -311,20 +336,23 @@ def procesar_imagen_silencioso(frame):
                     low_text=0.15,
                     link_threshold=0.15,
                     paragraph=False,
-                    mag_ratio=1.5,
+                    mag_ratio=1.0,
+                    width_ths=0.7,
+                    height_ths=0.7,
+                    add_margin=0.08,
                 )
             except cv2.error as error:
                 print(f"⚠️ EasyOCR descartó una región inválida: {error}")
                 continue
             for texto, confianza in textos_ocr_a_candidatos(resultados):
+                if confianza < OCR_MIN_CONFIDENCE:
+                    continue
                 if LPR_DEBUG:
                     print(f"🔎 OCR: {texto!r} ({confianza:.0%})")
-                if confianza < 0.20:
-                    continue
                 placa = extraer_placa_colombiana(limpiar_texto_ocr(texto))
                 if placa:
                     # Las regiones geométricas son más fiables que el frame completo.
-                    peso_region = 1.25 if region is not frame else 1.0
+                    peso_region = 1.25 if region is not frame_roi else 1.0
                     votos[placa] += float(confianza) * peso_region
     return max(votos, key=votos.get) if votos else None
 
@@ -623,8 +651,8 @@ def iniciar_sistema():
 
         # --- CAMBIO 1 (Visual): Dibujar el nuevo recuadro más grande ---
         alto, ancho = frame.shape[:2]
-        x1, y1 = int(ancho * 0.1), int(alto * 0.1)
-        x2, y2 = int(ancho * 0.9), int(alto * 0.9)
+        x1, y1 = int(ancho * ROI_X1), int(alto * ROI_Y1)
+        x2, y2 = int(ancho * ROI_X2), int(alto * ROI_Y2)
         
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
         cv2.putText(frame, "LPR AUTOMATICO", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
