@@ -36,6 +36,7 @@ ultima_placa_detectada = ""
 tiempo_ultima_captura = 0
 ultimo_tiempo_procesamiento = 0
 COOLDOWN_PROCESO_SEGUNDOS = 0.3
+INTERVALO_PROCESAMIENTO_SEGUNDOS = 1.0
 UMBRAL_MOVIMIENTO = 800
 vehiculos_activos_cache = set()
 ultima_actualizacion_parqueados = 0.0
@@ -541,7 +542,11 @@ def iniciar_sistema():
         prev_gray = gray_blur
 
         ahora = time.time()
-        if movimiento > UMBRAL_MOVIMIENTO and not procesando_ia and (ahora - ultimo_tiempo_procesamiento) > COOLDOWN_PROCESO_SEGUNDOS:
+        debe_procesar = (
+            movimiento > UMBRAL_MOVIMIENTO
+            or (ahora - ultimo_tiempo_procesamiento) > INTERVALO_PROCESAMIENTO_SEGUNDOS
+        )
+        if debe_procesar and not procesando_ia and (ahora - ultimo_tiempo_procesamiento) > COOLDOWN_PROCESO_SEGUNDOS:
             ultimo_tiempo_procesamiento = ahora
             procesando_ia = True
             threading.Thread(target=tarea_ia_en_segundo_plano, args=(frame.copy(),), daemon=True).start()
