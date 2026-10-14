@@ -253,21 +253,6 @@
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Izquierda: Control -->
                     <div class="space-y-5">
-                        <!-- Registrar Salida -->
-                        <div class="main-card p-6" style="border: 2px solid #fecaca;">
-                            <h2 class="text-lg font-bold text-surface-800 mb-4 flex items-center gap-2">
-                                <span>💰</span> Registrar Salida y Cobrar
-                            </h2>
-                            <div>
-                                <label class="block text-xs font-semibold text-surface-500 mb-1.5 tracking-wide">PLACA DEL VEHÍCULO</label>
-                                <input type="text" id="placa-input" placeholder="ABC123" class="input-field placa">
-                            </div>
-                            <button onclick="forzarSalidaDesdeInput()" class="w-full btn-danger mt-4 py-3.5 text-base flex items-center justify-center gap-2">
-                                📤 Dar Salida y Cobrar
-                            </button>
-                            <p class="text-[11px] text-surface-400 text-center mt-3">El ingreso lo registra el LPR automáticamente</p>
-                        </div>
-
                         <!-- Ticket Ingreso -->
                         <div id="ticket-ingreso-card" class="hidden bg-white p-6 rounded-2xl border-2 border-blue-500 shadow-lg text-center relative overflow-hidden">
                             <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
@@ -1453,9 +1438,6 @@
                             </td>
                             <td class="px-5 py-3 text-right whitespace-nowrap">
                                 ${esDiario ? `<button type="button" onclick="abrirConvertirMensual('${v.placa}')" class="text-xs bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white px-3 py-2 rounded-lg font-bold transition-all border border-amber-200 active:scale-95 mr-1">👑 Mensual</button>` : ''}
-                                <button type="button" onclick="forzarSalida('${v.placa}')" class="text-xs bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-2 rounded-lg font-bold transition-all border border-rose-200 active:scale-95">
-                                    Dar Salida
-                                </button>
                             </td>
                         `;
                         tbody.appendChild(row);
@@ -1500,79 +1482,6 @@
                     });
                 }
             } catch (e) {}
-        }
-
-        // INGRESO / SALIDA
-        async function forzarSalidaDesdeInput() {
-            const input = document.getElementById("placa-input");
-            const placa = input.value.trim().toUpperCase();
-            if(!placa) { input.focus(); return; }
-            input.value = "";
-            await forzarSalida(placa);
-        }
-
-        async function forzarSalida(placa) {
-            const res = await fetch(`${API_URL}/salida/`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ placa: placa })
-            });
-
-            if(res.ok) {
-                ultimoCobro = await res.json();
-                const card = document.getElementById("cobro-card");
-                card.classList.remove("hidden");
-                
-                card.classList.remove("fade-in");
-                void card.offsetWidth; 
-                card.classList.add("fade-in");
-
-                document.getElementById("cobro-monto").textContent = ultimoCobro.monto_cobrado
-                    ? formatoMoneda(ultimoCobro.monto_cobrado)
-                    : "Mensual";
-                document.getElementById("cobro-placa").textContent = ultimoCobro.placa;
-                document.getElementById("cobro-horas").textContent = `${ultimoCobro.horas_transcurridas} hora(s)`;
-                document.getElementById("placa-input").value = "";
-                
-                // Preparar impresión del ticket láser/térmico con los datos del vehículo y del parqueadero
-                contadorTickets++;
-                document.getElementById("ticket-direccion").textContent = DATOS_PARQUEADERO.direccion;
-                document.getElementById("ticket-telefono").textContent = DATOS_PARQUEADERO.telefono;
-                document.getElementById("ticket-numero").textContent = String(contadorTickets).padStart(6, '0');
-                document.getElementById("ticket-fecha").textContent = formatoFecha(ultimoCobro.hora_salida || new Date());
-                document.getElementById("ticket-placa").textContent = ultimoCobro.placa;
-                document.getElementById("ticket-ingreso").textContent = formatoHora(ultimoCobro.hora_ingreso) + " (" + formatoFecha(ultimoCobro.hora_ingreso) + ")";
-                document.getElementById("ticket-salida").textContent = formatoHora(ultimoCobro.hora_salida) + " (" + formatoFecha(ultimoCobro.hora_salida) + ")";
-                document.getElementById("ticket-horas").textContent = ultimoCobro.horas_transcurridas;
-                document.getElementById("ticket-cajero").textContent = usuarioActual ? usuarioActual.nombre : "";
-                document.getElementById("ticket-total").textContent = ultimoCobro.monto_cobrado
-                    ? formatoMoneda(ultimoCobro.monto_cobrado)
-                    : "Mensual";
-
-                document.getElementById("laser-placa").textContent = ultimoCobro.placa;
-                document.getElementById("laser-fecha").textContent = formatoFecha(ultimoCobro.hora_salida || new Date());
-                document.getElementById("laser-ingreso").textContent = formatoHora(ultimoCobro.hora_ingreso) + " " + formatoFecha(ultimoCobro.hora_ingreso);
-                document.getElementById("laser-salida").textContent = formatoHora(ultimoCobro.hora_salida) + " " + formatoFecha(ultimoCobro.hora_salida);
-                document.getElementById("laser-tiempo").textContent = `${ultimoCobro.horas_transcurridas} hora(s)`;
-                document.getElementById("laser-tarifa").textContent = ultimoCobro.monto_cobrado ? formatoMoneda(ultimoCobro.monto_cobrado / Math.max(ultimoCobro.horas_transcurridas || 1, 1)) : "Mensual";
-                document.getElementById("laser-cajero").textContent = usuarioActual ? usuarioActual.nombre : "";
-                document.getElementById("laser-total").textContent = ultimoCobro.monto_cobrado ? formatoMoneda(ultimoCobro.monto_cobrado) : "Mensual";
-                document.getElementById("ticket-laser").classList.remove("hidden");
-
-                cargarParqueados();
-                cargarHistorialDiarioInicio();
-                if(usuarioActual.rol === "Admin") {
-                    cargarEstadisticas();
-                    cargarHistorialCompleto();
-                } else {
-                    const permisos = obtenerPermisos();
-                    if (permisos.metricas) cargarEstadisticas();
-                    if (permisos.historial) cargarHistorialCompleto();
-                }
-            } else {
-                const err = await res.json();
-                alert("Error: " + err.detail);
-            }
         }
 
         function imprimirTicketUltimo() {
