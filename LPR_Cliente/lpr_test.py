@@ -143,22 +143,45 @@ def extraer_placa_colombiana(texto: str) -> Optional[str]:
 
 
 def textos_ocr_a_candidatos(resultados) -> List[Tuple[str, float]]:
-    """Combina fragmentos OCR de una misma línea antes de validar la placa."""
+    """Combina fragmentos OCR de la misma línea sin mezclar zonas distintas."""
     lecturas = []
     for caja, texto, confianza in resultados:
         texto_limpio = normalizar_placa(texto)
         if not texto_limpio:
             continue
-        x = min(punto[0] for punto in caja)
-        lecturas.append((x, texto_limpio, float(confianza)))
+        xs = [punto[0] for punto in caja]
+        ys = [punto[1] for punto in caja]
+        x = min(xs)
+        centro_y = (min(ys) + max(ys)) / 2
+        alto = max(1.0, max(ys) - min(ys))
+        lecturas.append((x, centro_y, alto, texto_limpio, float(confianza)))
 
-    lecturas.sort(key=lambda item: item[0])
+    lecturas.sort(key=lambda item: (item[1], item[0]))
     candidatos = []
-    if lecturas:
-        texto_completo = "".join(item[1] for item in lecturas)
-        confianza_media = sum(item[2] for item in lecturas) / len(lecturas)
+    lineas = []
+    for lectura in lecturas:
+        _, centro_y, alto, _, _ = lectura
+        linea = next(
+            (
+                linea
+                for linea in lineas
+                if abs(centro_y - linea["centro_y"]) <= max(alto, linea["alto"]) * 0.6
+            ),
+            None,
+        )
+        if linea is None:
+            lineas.append({"centro_y": centro_y, "alto": alto, "lecturas": [lectura]})
+        else:
+            linea["lecturas"].append(lectura)
+            linea["centro_y"] = sum(item[1] for item in linea["lecturas"]) / len(linea["lecturas"])
+            linea["alto"] = max(linea["alto"], alto)
+
+    for linea in lineas:
+        fragmentos = sorted(linea["lecturas"], key=lambda item: item[0])
+        texto_completo = "".join(item[3] for item in fragmentos)
+        confianza_media = sum(item[4] for item in fragmentos) / len(fragmentos)
         candidatos.append((texto_completo, confianza_media))
-        candidatos.extend((texto, confianza) for _, texto, confianza in lecturas)
+        candidatos.extend((texto, confianza) for _, _, _, texto, confianza in fragmentos)
     return candidatos
 
 
@@ -235,9 +258,11 @@ def preprocesar_para_ocr(frame):
         suavizado, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY, 31, 7,
     )
-    return tuple(
-        cv2.resize(imagen, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
-        for imagen in (gris, otsu, adaptativo)
+    return (
+        cv2.resize(recorte, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC),
+        cv2.resize(gris, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC),
+        cv2.resize(otsu, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC),
+        cv2.resize(adaptativo, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC),
     )
 
 
