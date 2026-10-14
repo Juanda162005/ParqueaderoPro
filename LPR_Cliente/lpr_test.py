@@ -239,19 +239,30 @@ def procesar_imagen_silencioso(frame):
     """
     OCR optimizado para placas colombianas con ciudad debajo.
     """
+    if frame is None or getattr(frame, "size", 0) == 0:
+        return None
+
     votos: Dict[str, float] = defaultdict(float)
     for region in extraer_regiones_placa(frame):
+        if region is None or getattr(region, "size", 0) == 0:
+            continue
         for imagen in preprocesar_para_ocr(region):
-            resultados = reader.readtext(
-                imagen,
-                detail=1,
-                allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ",
-                text_threshold=0.25,
-                low_text=0.15,
-                link_threshold=0.15,
-                paragraph=False,
-                mag_ratio=1.5,
-            )
+            if imagen is None or getattr(imagen, "size", 0) == 0:
+                continue
+            try:
+                resultados = reader.readtext(
+                    imagen,
+                    detail=1,
+                    allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ",
+                    text_threshold=0.25,
+                    low_text=0.15,
+                    link_threshold=0.15,
+                    paragraph=False,
+                    mag_ratio=1.5,
+                )
+            except cv2.error as error:
+                print(f"⚠️ EasyOCR descartó una región inválida: {error}")
+                continue
             for _, texto, confianza in resultados:
                 if confianza < 0.20:
                     continue
@@ -400,28 +411,26 @@ def obtener_vehiculos_activos():
 def tarea_ia_en_segundo_plano(frame_capturado):
     global procesando_ia, ultima_placa_detectada, tiempo_ultima_captura
 
-    placa = procesar_imagen_silencioso(frame_capturado)
+    try:
+        placa = procesar_imagen_silencioso(frame_capturado)
 
-    if placa:
-        placa = normalizar_placa(placa)
-        placa_confirmada = validar_consenso_placa(placa)
+        if placa:
+            placa = normalizar_placa(placa)
+            placa_confirmada = validar_consenso_placa(placa)
 
-        if placa_confirmada is None:
-            procesando_ia = False
-            return
+            if placa_confirmada is None:
+                return
 
-        tiempo_actual = time.time()
-        # Bloqueo de 45 segundos: no registrar la misma placa dos veces seguidas
-        # y 45 segundos mínimo entre cualquier registro para evitar falsos dobles
-        if placa_confirmada == ultima_placa_detectada and (tiempo_actual - tiempo_ultima_captura) < 45:
-            print(f"   ⏳ Placa {placa_confirmada} ya registrada recientemente. Ignorando...")
-            procesando_ia = False
-            return
+            tiempo_actual = time.time()
+            # Bloqueo de 45 segundos: no registrar la misma placa dos veces seguidas
+            # y 45 segundos mínimo entre cualquier registro para evitar falsos dobles
+            if placa_confirmada == ultima_placa_detectada and (tiempo_actual - tiempo_ultima_captura) < 45:
+                print(f"   ⏳ Placa {placa_confirmada} ya registrada recientemente. Ignorando...")
+                return
 
-        if placa_confirmada != ultima_placa_detectada or (tiempo_actual - tiempo_ultima_captura > 45):
-            print(f"\n🎯 [LECTURA CONFIRMADA] Placa: {placa_confirmada}. Verificando estado...")
+            if placa_confirmada != ultima_placa_detectada or (tiempo_actual - tiempo_ultima_captura > 45):
+                print(f"\n🎯 [LECTURA CONFIRMADA] Placa: {placa_confirmada}. Verificando estado...")
 
-            try:
                 if CAMERA_ROLE in {"entrada", "salida"}:
                     accion = CAMERA_ROLE
                     print(f"📍 Cámara {CAMERA_ROLE}: generando {accion.upper()}...")
@@ -438,13 +447,12 @@ def tarea_ia_en_segundo_plano(frame_capturado):
 
                 ultima_placa_detectada = placa_confirmada
                 tiempo_ultima_captura = tiempo_actual
-            except Exception as e:
-                print(f"❌ Error consultando vehículos parqueados: {e}")
-
-    else:
-        limpiar_historial_lecturas()
-
-    procesando_ia = False
+        else:
+            limpiar_historial_lecturas()
+    except (cv2.error, requests.RequestException) as error:
+        print(f"⚠️ Error recuperable durante el procesamiento LPR: {error}")
+    finally:
+        procesando_ia = False
 
 def iniciar_sistema():
     global procesando_ia, ultimo_tiempo_procesamiento
