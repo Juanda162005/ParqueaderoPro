@@ -80,7 +80,7 @@ def iniciar_base_datos_postgres():
         ).fetchone()[0]
         cursor.execute(
             "INSERT INTO usuarios (username, password, nombre, rol, permisos, tenant_id) VALUES (?, ?, ?, ?, ?, ?)",
-            ("admin", hash_password(password), "Administrador", "Administrador", "{}", tenant_id),
+            ("admin", hash_password(password), "Administrador", "Admin", "{}", tenant_id),
         )
     cursor.execute("SELECT COUNT(*) FROM tarifas")
     if cursor.fetchone()[0] == 0:
