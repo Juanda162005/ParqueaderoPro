@@ -131,6 +131,12 @@
                     Ingresar al sistema
                 </button>
             </form>
+            <button id="btn-login-passkey" type="button" onclick="loginConPasskey()" class="w-full mt-3 btn-ghost text-sm">
+                Ingresar con huella o Face ID
+            </button>
+            <button id="btn-registrar-passkey" type="button" onclick="registrarPasskey()" class="hidden w-full mt-3 btn-ghost text-sm">
+                Activar huella o Face ID en este dispositivo
+            </button>
             <button id="btn-instalar-app" type="button" class="hidden w-full mt-3 btn-ghost text-sm">
                 Instalar ParqueaderoPRO
             </button>
@@ -182,6 +188,7 @@
             <div class="p-4 border-t border-white/10">
                 <div class="text-white/50 text-xs mb-2"><span id="user-nombre"></span></div>
                 <div class="text-white/30 text-[10px] mb-4">🏢 <span id="user-parqueadero"></span></div>
+                <button id="btn-registrar-passkey-dashboard" onclick="registrarPasskey()" class="w-full text-left text-white/50 hover:text-white/80 text-xs font-medium transition-colors py-2">Activar huella / Face ID</button>
                 <button onclick="cerrarSesion()" class="w-full text-left text-white/50 hover:text-white/80 text-xs font-medium transition-colors py-2">Cerrar sesión →</button>
             </div>
         </aside>
@@ -1302,6 +1309,8 @@
             document.getElementById("dashboard-view").classList.remove("hidden");
             document.getElementById("user-nombre").textContent = usuarioActual.nombre;
             document.getElementById("user-nombre-mob").textContent = usuarioActual.nombre;
+            const passkeyButton = document.getElementById("btn-registrar-passkey-dashboard");
+            if (passkeyButton) passkeyButton.classList.remove("hidden");
 
             // Superadmin (cliente_id=1): solo ve gestión de clientes, sin parqueadero
             if (usuarioActual.cliente_id === 1 && usuarioActual.rol === "Admin") {
@@ -1366,10 +1375,96 @@
                 tokenActual = data.access_token || null;
                 if (tokenActual) localStorage.setItem(CLAVE_TOKEN, tokenActual);
                 usuarioActual = data;
+                document.getElementById("btn-login-passkey").classList.remove("hidden");
 
                 iniciarDashboard();
             } catch (err) {
                 alert(err.message);
+            }
+
+            function base64urlABytes(valor) {
+                const base64 = valor.replace(/-/g, "+").replace(/_/g, "/");
+                const binario = atob(base64 + "=".repeat((4 - base64.length % 4) % 4));
+                return Uint8Array.from(binario, caracter => caracter.charCodeAt(0));
+            }
+
+            function bytesABase64url(bytes) {
+                let binario = "";
+                new Uint8Array(bytes).forEach(byte => binario += String.fromCharCode(byte));
+                return btoa(binario).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+            }
+
+            function prepararOpcionesPasskey(opciones) {
+                opciones.challenge = base64urlABytes(opciones.challenge);
+                if (opciones.user?.id) opciones.user.id = base64urlABytes(opciones.user.id);
+                opciones.excludeCredentials?.forEach(item => item.id = base64urlABytes(item.id));
+                opciones.allowCredentials?.forEach(item => item.id = base64urlABytes(item.id));
+                return opciones;
+            }
+
+            function serializarCredencial(credencial) {
+                return {
+                    id: credencial.id,
+                    rawId: bytesABase64url(credencial.rawId),
+                    type: credencial.type,
+                    response: {
+                        clientDataJSON: bytesABase64url(credencial.response.clientDataJSON),
+                        attestationObject: credencial.response.attestationObject
+                            ? bytesABase64url(credencial.response.attestationObject) : undefined,
+                        authenticatorData: credencial.response.authenticatorData
+                            ? bytesABase64url(credencial.response.authenticatorData) : undefined,
+                        signature: credencial.response.signature
+                            ? bytesABase64url(credencial.response.signature) : undefined,
+                        userHandle: credencial.response.userHandle
+                            ? bytesABase64url(credencial.response.userHandle) : null,
+                    }
+                };
+            }
+
+            async function registrarPasskey() {
+                if (!window.PublicKeyCredential || !usuarioActual) return alert("Este dispositivo no admite passkeys.");
+                try {
+                    const opcionesRes = await fetch(`${API_URL}/webauthn/register/options`, { method: "POST" });
+                    if (!opcionesRes.ok) throw new Error((await opcionesRes.json()).detail || "No se pudo iniciar el registro");
+                    const credencial = await navigator.credentials.create({ publicKey: prepararOpcionesPasskey(await opcionesRes.json()) });
+                    const verificar = await fetch(`${API_URL}/webauthn/register/verify`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ credential: serializarCredencial(credencial), device_name: navigator.userAgent.slice(0, 100) })
+                    });
+                    if (!verificar.ok) throw new Error((await verificar.json()).detail || "No se pudo guardar la passkey");
+                    alert("Huella o Face ID activado correctamente en este dispositivo.");
+                } catch (error) {
+                    if (error.name !== "NotAllowedError") alert(error.message);
+                }
+            }
+
+            async function loginConPasskey() {
+                if (!window.PublicKeyCredential) return alert("Este dispositivo no admite passkeys.");
+                const username = document.getElementById("login-user").value.trim().toLowerCase();
+                if (!username) return alert("Escribe tu usuario primero.");
+                try {
+                    const opcionesRes = await fetch(`${API_URL}/webauthn/login/options`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ username })
+                    });
+                    if (!opcionesRes.ok) throw new Error((await opcionesRes.json()).detail || "No se pudo iniciar el acceso");
+                    const credencial = await navigator.credentials.get({ publicKey: prepararOpcionesPasskey(await opcionesRes.json()) });
+                    const verificar = await fetch(`${API_URL}/webauthn/login/verify`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ credential: serializarCredencial(credencial) })
+                    });
+                    if (!verificar.ok) throw new Error((await verificar.json()).detail || "Passkey inválida");
+                    const data = await verificar.json();
+                    tokenActual = data.access_token || null;
+                    if (tokenActual) localStorage.setItem(CLAVE_TOKEN, tokenActual);
+                    usuarioActual = data;
+                    iniciarDashboard();
+                } catch (error) {
+                    if (error.name !== "NotAllowedError") alert(error.message);
+                }
             }
         }
 

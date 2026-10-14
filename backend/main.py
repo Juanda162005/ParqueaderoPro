@@ -2,6 +2,7 @@ import json
 import math
 import os
 import re
+import secrets
 import shutil
 import sqlite3
 import threading
@@ -15,6 +16,25 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
+from webauthn import (
+    generate_authentication_options,
+    generate_registration_options,
+    verify_authentication_response,
+    verify_registration_response,
+)
+from webauthn.helpers import (
+    base64url_to_bytes,
+    bytes_to_base64url,
+    options_to_json_dict,
+    parse_authentication_credential_json,
+    parse_registration_credential_json,
+)
+from webauthn.helpers.structs import (
+    AuthenticatorSelectionCriteria,
+    PublicKeyCredentialDescriptor,
+    ResidentKeyRequirement,
+    UserVerificationRequirement,
+)
 
 try:
     from .database import DB_FILE, hash_password, iniciar_base_datos, verificar_password
@@ -51,6 +71,8 @@ CORS_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
+WEBAUTHN_ORIGIN = os.getenv("WEBAUTHN_ORIGIN", CORS_ORIGINS[0])
+WEBAUTHN_RP_ID = os.getenv("WEBAUTHN_RP_ID", re.sub(r"^https?://", "", WEBAUTHN_ORIGIN).split("/")[0])
 
 app.add_middleware(
     CORSMiddleware,
@@ -143,6 +165,15 @@ threading.Thread(target=_backup_loop, daemon=True).start()
 class LoginModel(BaseModel):
     username: str
     password: str
+
+
+class WebAuthnOptionsRequest(BaseModel):
+    username: Optional[str] = None
+
+
+class WebAuthnVerifyRequest(BaseModel):
+    credential: Dict[str, Any]
+    device_name: str = "Dispositivo"
 
 
 class RegistroIngreso(BaseModel):
@@ -826,6 +857,10 @@ def login(user: LoginModel, request: Request, response: Response):
 
     auditar("LOGIN_EXITOSO", usuario["username"], usuario.get("tenant_id", 0), f"IP={ip}")
 
+    return establecer_sesion(usuario, response)
+
+
+def establecer_sesion(usuario: Dict[str, Any], response: Response):
     token = crear_token(usuario["id"], usuario["username"], usuario["tenant_slug"])
     response.set_cookie(
         key="access_token",
@@ -850,6 +885,205 @@ def login(user: LoginModel, request: Request, response: Response):
         "tenant_nombre": usuario["tenant_nombre"],
         "cliente_id": usuario["cliente_id"],
     }
+
+
+def obtener_usuario_por_username(username: str) -> Optional[Dict[str, Any]]:
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "SELECT u.id, u.username, u.nombre, u.rol, u.permisos, u.tenant_id, "
+        "t.slug as tenant_slug, t.nombre as tenant_nombre, t.cliente_id "
+        "FROM usuarios u JOIN tenants t ON t.id = u.tenant_id "
+        "WHERE lower(u.username) = ?",
+        (normalizar_username(username),),
+    )
+    row = cursor.fetchone()
+    db.close()
+    if not row:
+        return None
+    return {
+        "id": row["id"], "username": row["username"], "nombre": row["nombre"],
+        "rol": row["rol"], "permisos": parse_permisos(row["permisos"]),
+        "tenant_id": row["tenant_id"], "tenant_slug": row["tenant_slug"],
+        "tenant_nombre": row["tenant_nombre"], "cliente_id": row["cliente_id"],
+    }
+
+
+def obtener_usuario_por_id(usuario_id: int) -> Optional[Dict[str, Any]]:
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "SELECT u.id, u.username, u.nombre, u.rol, u.permisos, u.tenant_id, "
+        "t.slug as tenant_slug, t.nombre as tenant_nombre, t.cliente_id "
+        "FROM usuarios u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = ?",
+        (usuario_id,),
+    )
+    row = cursor.fetchone()
+    db.close()
+    if not row:
+        raise HTTPException(status_code=401, detail="Usuario no encontrado")
+    return {
+        "id": row["id"], "username": row["username"], "nombre": row["nombre"],
+        "rol": row["rol"], "permisos": parse_permisos(row["permisos"]),
+        "tenant_id": row["tenant_id"], "tenant_slug": row["tenant_slug"],
+        "tenant_nombre": row["tenant_nombre"], "cliente_id": row["cliente_id"],
+    }
+
+
+def guardar_reto(usuario_id: Optional[int], tipo: str, challenge: bytes):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM webauthn_challenges WHERE tipo = ? AND (usuario_id = ? OR usuario_id IS NULL)", (tipo, usuario_id))
+    expira = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    cursor.execute(
+        "INSERT INTO webauthn_challenges (usuario_id, challenge, tipo, expira_en) VALUES (?, ?, ?, ?)",
+        (usuario_id, bytes_to_base64url(challenge), tipo, expira),
+    )
+    db.commit()
+    db.close()
+
+
+def consumir_reto(usuario_id: Optional[int], tipo: str) -> bytes:
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "SELECT id, challenge FROM webauthn_challenges "
+        "WHERE tipo = ? AND (usuario_id = ? OR usuario_id IS NULL) AND expira_en > ? "
+        "ORDER BY id DESC LIMIT 1",
+        (tipo, usuario_id, datetime.now(timezone.utc).isoformat()),
+    )
+    row = cursor.fetchone()
+    if not row:
+        db.close()
+        raise HTTPException(status_code=400, detail="El desafío WebAuthn expiró o no existe")
+    cursor.execute("DELETE FROM webauthn_challenges WHERE id = ?", (row["id"],))
+    db.commit()
+    db.close()
+    return base64url_to_bytes(row["challenge"])
+
+
+def credenciales_usuario(usuario_id: int):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("SELECT credential_id FROM webauthn_credentials WHERE usuario_id = ?", (usuario_id,))
+    rows = cursor.fetchall()
+    db.close()
+    return [PublicKeyCredentialDescriptor(id=base64url_to_bytes(row["credential_id"])) for row in rows]
+
+
+@app.post("/webauthn/register/options")
+def webauthn_register_options(
+    current_user: dict = Depends(get_current_user),
+):
+    opciones = generate_registration_options(
+        rp_id=WEBAUTHN_RP_ID,
+        rp_name="ParqueaderoPRO",
+        user_name=current_user["username"],
+        user_id=str(current_user["id"]).encode("utf-8"),
+        user_display_name=current_user["nombre"],
+        exclude_credentials=credenciales_usuario(current_user["id"]),
+        authenticator_selection=AuthenticatorSelectionCriteria(
+            resident_key=ResidentKeyRequirement.PREFERRED,
+            user_verification=UserVerificationRequirement.PREFERRED,
+        ),
+    )
+    guardar_reto(current_user["id"], "registro", opciones.challenge)
+    return options_to_json_dict(opciones)
+
+
+@app.post("/webauthn/register/verify")
+def webauthn_register_verify(
+    payload: WebAuthnVerifyRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    reto = consumir_reto(current_user["id"], "registro")
+    try:
+        verificado = verify_registration_response(
+            credential=parse_registration_credential_json(json.dumps(payload.credential)),
+            expected_challenge=reto,
+            expected_rp_id=WEBAUTHN_RP_ID,
+            expected_origin=WEBAUTHN_ORIGIN,
+        )
+    except Exception as error:
+        raise HTTPException(status_code=400, detail=f"No se pudo verificar la passkey: {error}") from error
+
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "INSERT INTO webauthn_credentials "
+        "(usuario_id, credential_id, public_key, sign_count, device_name) VALUES (?, ?, ?, ?, ?)",
+        (
+            current_user["id"],
+            bytes_to_base64url(verificado.credential_id),
+            bytes_to_base64url(verificado.credential_public_key),
+            verificado.sign_count,
+            payload.device_name[:100],
+        ),
+    )
+    db.commit()
+    db.close()
+    return {"mensaje": "Passkey registrada correctamente"}
+
+
+@app.post("/webauthn/login/options")
+def webauthn_login_options(payload: WebAuthnOptionsRequest):
+    if not payload.username:
+        raise HTTPException(status_code=400, detail="Indica el usuario antes de usar la huella")
+    usuario = obtener_usuario_por_username(payload.username)
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    credenciales = credenciales_usuario(usuario["id"])
+    if not credenciales:
+        raise HTTPException(status_code=400, detail="Este usuario aún no tiene una passkey registrada")
+    opciones = generate_authentication_options(
+        rp_id=WEBAUTHN_RP_ID,
+        allow_credentials=credenciales,
+        user_verification=UserVerificationRequirement.PREFERRED,
+    )
+    guardar_reto(usuario["id"], "autenticacion", opciones.challenge)
+    return options_to_json_dict(opciones)
+
+
+@app.post("/webauthn/login/verify")
+def webauthn_login_verify(
+    payload: WebAuthnVerifyRequest,
+    response: Response,
+):
+    credential_id = payload.credential.get("rawId") or payload.credential.get("id")
+    if not credential_id:
+        raise HTTPException(status_code=400, detail="Credencial WebAuthn inválida")
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "SELECT usuario_id, public_key, sign_count FROM webauthn_credentials WHERE credential_id = ?",
+        (credential_id,),
+    )
+    credencial = cursor.fetchone()
+    db.close()
+    if not credencial:
+        raise HTTPException(status_code=401, detail="Passkey no registrada")
+    reto = consumir_reto(credencial["usuario_id"], "autenticacion")
+    try:
+        verificado = verify_authentication_response(
+            credential=parse_authentication_credential_json(json.dumps(payload.credential)),
+            expected_challenge=reto,
+            expected_rp_id=WEBAUTHN_RP_ID,
+            expected_origin=WEBAUTHN_ORIGIN,
+            credential_public_key=base64url_to_bytes(credencial["public_key"]),
+            credential_current_sign_count=credencial["sign_count"],
+        )
+    except Exception as error:
+        raise HTTPException(status_code=401, detail=f"No se pudo verificar la passkey: {error}") from error
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "UPDATE webauthn_credentials SET sign_count = ?, ultimo_uso = ? WHERE credential_id = ?",
+        (verificado.new_sign_count, datetime.now(timezone.utc).isoformat(), credential_id),
+    )
+    db.commit()
+    db.close()
+    usuario = obtener_usuario_por_id(credencial["usuario_id"])
+    return establecer_sesion(usuario, response)
 
 
 @app.post("/logout/")

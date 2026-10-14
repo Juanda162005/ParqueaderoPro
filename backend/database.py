@@ -75,6 +75,22 @@ def iniciar_base_datos():
             FOREIGN KEY(tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS webauthn_credentials (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER NOT NULL,
+            credential_id TEXT UNIQUE NOT NULL, public_key TEXT NOT NULL,
+            sign_count INTEGER NOT NULL DEFAULT 0, device_name TEXT NOT NULL DEFAULT '',
+            creado_en TEXT NOT NULL DEFAULT (datetime('now')), ultimo_uso TEXT,
+            FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS webauthn_challenges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER,
+            challenge TEXT NOT NULL, tipo TEXT NOT NULL, expira_en TEXT NOT NULL,
+            FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+        )
+    ''')
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS registros (

@@ -31,6 +31,11 @@ Para una prueba remota:
    la URL por la URL pública de Render.
 5. Publicar `frontend` como sitio estático en Vercel.
 6. Usar en el LPR la URL HTTPS de Render como `BACKEND_URL`.
+7. Para activar huella/Face ID, configurar en Render:
+   - `WEBAUTHN_ORIGIN`: el dominio HTTPS estable de Vercel, por ejemplo
+     `https://parqueaderopro.vercel.app`.
+   - `WEBAUTHN_RP_ID`: solo el dominio, por ejemplo
+     `parqueaderopro.vercel.app`.
 
 Vercel genera una URL diferente para cada despliegue, pero debes usar el
 dominio estable del proyecto (por ejemplo `https://parqueaderopro.vercel.app`)
@@ -50,6 +55,13 @@ móvil. Abre el dominio estable de producción usando HTTPS y:
 
 La instalación requiere usar la URL HTTPS estable de Vercel; no funciona desde
 una URL temporal de vista previa ni desde un archivo local.
+
+### Huella o Face ID
+
+Después de iniciar sesión con usuario y contraseña, pulsa **Activar huella /
+Face ID** desde el menú del usuario. En el siguiente acceso escribe primero el
+usuario y pulsa **Ingresar con huella o Face ID**. El dispositivo mostrará su
+propio diálogo biométrico; el servidor nunca recibe ni almacena la huella.
 
 No subas `config.js` si contiene una URL privada y nunca pongas una clave
 `service_role` de Supabase en el frontend o en el cliente OCR.

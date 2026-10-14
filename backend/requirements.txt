@@ -7,3 +7,4 @@ PyJWT==2.13.0
 requests==2.32.3
 openpyxl==3.1.5
 psycopg2-binary==2.9.10
+webauthn==2.6.0

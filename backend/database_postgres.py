@@ -50,6 +50,16 @@ def iniciar_base_datos_postgres():
             categoria TEXT NOT NULL DEFAULT 'General', fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             tenant_id INTEGER NOT NULL DEFAULT 1,
             FOREIGN KEY(tenant_id) REFERENCES tenants(id) ON DELETE CASCADE)""",
+        """CREATE TABLE IF NOT EXISTS webauthn_credentials (
+            id SERIAL PRIMARY KEY, usuario_id INTEGER NOT NULL,
+            credential_id TEXT UNIQUE NOT NULL, public_key TEXT NOT NULL,
+            sign_count INTEGER NOT NULL DEFAULT 0, device_name TEXT NOT NULL DEFAULT '',
+            creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            ultimo_uso TEXT, FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE)""",
+        """CREATE TABLE IF NOT EXISTS webauthn_challenges (
+            id SERIAL PRIMARY KEY, usuario_id INTEGER, challenge TEXT NOT NULL,
+            tipo TEXT NOT NULL, expira_en TEXT NOT NULL,
+            FOREIGN KEY(usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE)""",
     ]
     for tabla in tablas:
         cursor.execute(tabla)
