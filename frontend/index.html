@@ -1,0 +1,2578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParqueaderoPRO</title>
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="config.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        brand: { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81' },
+                        surface: { 50:'#f8fafc',100:'#f1f5f9',200:'#e2e8f0',300:'#cbd5e1',400:'#94a3b8',500:'#64748b',600:'#475569',700:'#334155',800:'#1e293b',900:'#0f172a' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { background: #f0f2f5; }
+
+        /* Sidebar */
+        .sidebar { background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); }
+        .sidebar-link { transition: all 0.2s; border-left: 3px solid transparent; }
+        .sidebar-link:hover, .sidebar-link.active { background: rgba(255,255,255,0.08); border-left-color: #6366f1; }
+        .sidebar-link.active span { color: #a5b4fc; }
+
+        /* Cards */
+        .stat-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03); transition: box-shadow 0.2s; }
+        .stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .main-card { background: white; border-radius: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03); }
+
+        /* Botones */
+        .btn-primary { background: #4f46e5; color: white; font-weight: 600; border-radius: 12px; padding: 12px 24px; transition: all 0.2s; }
+        .btn-primary:hover { background: #4338ca; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,70,229,0.3); }
+        .btn-danger { background: #ef4444; color: white; font-weight: 600; border-radius: 12px; padding: 12px 24px; transition: all 0.2s; }
+        .btn-danger:hover { background: #dc2626; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
+        .btn-success { background: #10b981; color: white; font-weight: 600; border-radius: 12px; padding: 10px 20px; transition: all 0.2s; }
+        .btn-success:hover { background: #059669; transform: translateY(-1px); }
+        .btn-ghost { background: transparent; color: #64748b; font-weight: 500; border-radius: 10px; padding: 8px 16px; transition: all 0.2s; }
+        .btn-ghost:hover { background: #f1f5f9; color: #334155; }
+
+        /* Inputs */
+        .input-field { width: 100%; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; color: #1e293b; font-size: 15px; transition: all 0.2s; }
+        .input-field:focus { background: white; border-color: #818cf8; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); outline: none; }
+        .input-field.placa { font-family: 'Courier New', monospace; font-size: 24px; text-align: center; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 700; }
+        select.input-field { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; }
+
+        /* Badges */
+        .badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-info { background: #dbeafe; color: #1e40af; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+
+        /* Tabla */
+        .table-modern { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .table-modern th { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 16px; text-align: left; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .table-modern td { padding: 14px 16px; font-size: 14px; color: #334155; border-bottom: 1px solid #f1f5f9; }
+        .table-modern tr:hover td { background: #f8fafc; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .modal-box { background: white; border-radius: 24px; padding: 28px; width: 100%; max-width: 480px; box-shadow: 0 25px 50px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
+        @media (max-width: 640px) {
+            .modal-box { border-radius: 20px 20px 0 0; padding: 20px; max-width: 100%; margin-top: auto; max-height: 85vh; }
+            .modal-overlay { align-items: flex-end; padding: 0; }
+            .stat-card { padding: 14px; }
+            .main-card { border-radius: 16px; }
+            .main-card.p-6 { padding: 16px; }
+            .table-modern th, .table-modern td { padding: 10px 12px; font-size: 13px; }
+            h2 { font-size: 1.1rem; }
+        }
+
+        /* Ticket térmico */
+        .ticket-termico .ticket-header { text-align: center; border-bottom: 1px dashed black; padding-bottom: 5px; margin-bottom: 5px; }
+        .ticket-termico .ticket-titulo { font-size: 16px; font-weight: bold; }
+        .ticket-termico .ticket-total { text-align: right; border-top: 1px dashed black; margin-top: 5px; padding-top: 5px; }
+        .ticket-termico .ticket-gracias { text-align: center; margin-top: 10px; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #ticket-impresion, #ticket-impresion * { visibility: visible; }
+            #ticket-impresion { position: absolute; left: 0; top: 0; width: 58mm; font-family: 'Courier New', Courier, monospace; }
+            body { background: white !important; }
+            .no-print, nav, .sidebar, #login-view, #dashboard-view > *:not(.printable-area) { display: none !important; }
+            .printable-area { display: block !important; visibility: visible !important; position: static !important; width: 100%; }
+            #ticket-laser { display: block !important; visibility: visible !important; margin: 0 auto; }
+        }
+
+        .fade-in { animation: fadeIn 0.25s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen font-sans text-surface-800 antialiased">
+
+    <!-- LOGIN -->
+    <div id="login-view" class="flex min-h-screen items-center justify-center p-4" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);">
+        <div class="bg-white p-10 w-full max-w-md fade-in" style="border-radius: 28px; box-shadow: 0 25px 60px rgba(0,0,0,0.3);">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5 text-3xl" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
+                    <span aria-hidden="true">🚗</span>
+                </div>
+                <h1 class="text-3xl font-black tracking-tight text-surface-900">Parqueadero<span style="color:#6366f1;">PRO</span></h1>
+                <p class="text-sm text-surface-400 mt-2 font-medium">Control de acceso inteligente</p>
+            </div>
+            <form id="form-login" onsubmit="hacerLogin(event)" class="space-y-4">
+                <div>
+                    <label for="login-user" class="block text-xs font-semibold text-surface-500 mb-1.5 tracking-wide">USUARIO</label>
+                    <input type="text" id="login-user" required placeholder="admin" class="input-field">
+                </div>
+                <div>
+                    <label for="login-pass" class="block text-xs font-semibold text-surface-500 mb-1.5 tracking-wide">CONTRASEÑA</label>
+                    <input type="password" id="login-pass" required placeholder="••••••••" class="input-field">
+                </div>
+                <button type="submit" class="w-full btn-primary text-base py-3.5 mt-2" style="border-radius:14px;">
+                    Ingresar al sistema
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard-view" class="hidden min-h-screen flex">
+        <!-- Sidebar -->
+        <aside class="sidebar w-64 min-h-screen flex-shrink-0 hidden lg:flex flex-col">
+            <div class="p-6 border-b border-white/10">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🚗</span>
+                    <div>
+                        <h1 class="text-white font-bold text-lg leading-tight">Parqueadero<span style="color:#818cf8;">PRO</span></h1>
+                        <p class="text-white/40 text-[10px] font-medium tracking-wider uppercase"><span id="user-rol"></span></p>
+                    </div>
+                </div>
+            </div>
+            <nav class="flex-1 py-4 space-y-1 px-3">
+                <a href="#" onclick="cambiarPestana('panel')" id="tab-panel" class="sidebar-link active flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm font-medium">
+                    <span class="text-lg">📋</span><span>Panel</span>
+                </a>
+                <a href="#" onclick="cambiarPestana('mensuales')" id="tab-mensuales" data-perm="mensuales" class="sidebar-link restringible hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm font-medium">
+                    <span class="text-lg">👑</span><span>Mensualidades</span>
+                </a>
+                <a href="#" onclick="cambiarPestana('tarifas')" id="tab-tarifas" class="sidebar-link admin-only hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm font-medium">
+                    <span class="text-lg">💰</span><span>Tarifas</span>
+                </a>
+                <a href="#" onclick="cambiarPestana('historial')" id="tab-historial" data-perm="historial" class="sidebar-link restringible hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm font-medium">
+                    <span class="text-lg">📅</span><span>Historial</span>
+                </a>
+                <a href="#" onclick="cambiarPestana('config')" id="tab-config" class="sidebar-link admin-only hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm font-medium">
+                    <span class="text-lg">👤</span><span>Usuarios</span>
+                </a>
+                <a href="#" onclick="cambiarPestana('tenants')" id="tab-tenants" class="sidebar-link admin-only hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm font-medium">
+                    <span class="text-lg">🏢</span><span>Parqueaderos</span>
+                </a>
+                <a href="#" onclick="cambiarPestana('contabilidad')" id="tab-contabilidad" class="sidebar-link admin-only hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm font-medium">
+                    <span class="text-lg">📊</span><span>Contabilidad</span>
+                </a>
+                <a href="#" onclick="cambiarPestana('clientes')" id="tab-clientes" class="sidebar-link superadmin-only hidden flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm font-medium">
+                    <span class="text-lg">🏢</span><span>Clientes</span>
+                </a>
+            </nav>
+            <div class="p-4 border-t border-white/10">
+                <div class="text-white/50 text-xs mb-2"><span id="user-nombre"></span></div>
+                <div class="text-white/30 text-[10px] mb-4">🏢 <span id="user-parqueadero"></span></div>
+                <button onclick="cerrarSesion()" class="w-full text-left text-white/50 hover:text-white/80 text-xs font-medium transition-colors py-2">Cerrar sesión →</button>
+            </div>
+        </aside>
+
+        <!-- Mobile header con menú hamburguesa -->
+        <div class="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-surface-200 px-4 py-3 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-2">
+                <button onclick="toggleMobileMenu()" class="text-surface-600 hover:text-surface-800 p-1" aria-label="Menú">
+                    <svg id="menu-icon-open" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    <svg id="menu-icon-close" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                <span class="text-xl">🚗</span>
+                <span class="font-bold text-surface-800 text-sm">Parqueadero<span style="color:#6366f1;">PRO</span></span>
+            </div>
+            <div class="text-xs text-surface-400"><span id="user-nombre-mob"></span></div>
+        </div>
+
+        <!-- Menú desplegable móvil -->
+        <div id="mobile-menu" class="lg:hidden hidden fixed top-12 left-0 right-0 bottom-0 z-20 bg-white overflow-y-auto pt-2 pb-20">
+            <nav class="px-4 space-y-1">
+                <a href="#" onclick="cambiarPestana('panel');toggleMobileMenu()" id="tab-panel-mob" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-brand-50 text-brand-700">
+                    <span class="text-lg">📋</span>Panel
+                </a>
+                <a href="#" onclick="cambiarPestana('mensuales');toggleMobileMenu()" id="tab-mensuales-mob" data-perm="mensuales" class="restringible hidden flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-50">
+                    <span class="text-lg">👑</span>Mensualidades
+                </a>
+                <a href="#" onclick="cambiarPestana('tarifas');toggleMobileMenu()" id="tab-tarifas-mob" class="admin-only hidden flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-50">
+                    <span class="text-lg">💰</span>Tarifas
+                </a>
+                <a href="#" onclick="cambiarPestana('historial');toggleMobileMenu()" id="tab-historial-mob" data-perm="historial" class="restringible hidden flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-50">
+                    <span class="text-lg">📅</span>Historial
+                </a>
+                <a href="#" onclick="cambiarPestana('config');toggleMobileMenu()" id="tab-config-mob" class="admin-only hidden flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-50">
+                    <span class="text-lg">👤</span>Usuarios
+                </a>
+                <a href="#" onclick="cambiarPestana('tenants');toggleMobileMenu()" id="tab-tenants-mob" class="admin-only hidden flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-50">
+                    <span class="text-lg">🏢</span>Parqueaderos
+                </a>
+                <a href="#" onclick="cambiarPestana('contabilidad');toggleMobileMenu()" id="tab-contabilidad-mob" class="admin-only hidden flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-50">
+                    <span class="text-lg">📊</span>Contabilidad
+                </a>
+                <a href="#" onclick="cambiarPestana('clientes');toggleMobileMenu()" id="tab-clientes-mob" class="superadmin-only hidden flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-50">
+                    <span class="text-lg">🏢</span>Clientes
+                </a>
+                <hr class="my-4 border-surface-100">
+                <a href="#" onclick="cerrarSesion()" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50">
+                    <span class="text-lg">🚪</span>Cerrar sesión
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main content -->
+        <main class="flex-1 p-3 sm:p-4 lg:p-8 pt-14 lg:pt-8 max-w-7xl w-full mx-auto fade-in overflow-y-auto" style="max-height:100vh;">
+
+            <!-- PESTAÑA 1: PANEL DE CONTROL (Operaciones) -->
+            <div id="vista-panel" class="space-y-6 block">
+                
+                <!-- MÉTRICAS -->
+                <div id="admin-metrics" data-perm="metricas" class="hidden restringible grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="stat-card">
+                        <p class="text-xs text-surface-400 font-semibold tracking-wide uppercase">Vehículos Hoy</p>
+                        <p id="stat-vehiculos-hoy" class="text-3xl font-black text-surface-800 mt-2">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-surface-400 font-semibold tracking-wide uppercase">Recaudo Hoy</p>
+                        <p id="stat-recaudo-hoy" class="text-2xl font-black mt-2" style="color:#10b981;">$ 0</p>
+                    </div>
+                    <div class="stat-card hidden md:block">
+                        <p class="text-xs text-surface-400 font-semibold tracking-wide uppercase">Total Histórico</p>
+                        <p id="stat-vehiculos-hist" class="text-3xl font-black text-surface-800 mt-2">0</p>
+                    </div>
+                    <div class="stat-card hidden md:block">
+                        <p class="text-xs text-surface-400 font-semibold tracking-wide uppercase">Recaudo Total</p>
+                        <p id="stat-recaudo-hist" class="text-2xl font-black text-surface-800 mt-2">$ 0</p>
+                        <p class="text-[10px] text-surface-400 mt-1">Incluye mensualidades</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Izquierda: Control -->
+                    <div class="space-y-5">
+                        <!-- Registrar Salida -->
+                        <div class="main-card p-6" style="border: 2px solid #fecaca;">
+                            <h2 class="text-lg font-bold text-surface-800 mb-4 flex items-center gap-2">
+                                <span>💰</span> Registrar Salida y Cobrar
+                            </h2>
+                            <div>
+                                <label class="block text-xs font-semibold text-surface-500 mb-1.5 tracking-wide">PLACA DEL VEHÍCULO</label>
+                                <input type="text" id="placa-input" placeholder="ABC123" class="input-field placa">
+                            </div>
+                            <button onclick="forzarSalidaDesdeInput()" class="w-full btn-danger mt-4 py-3.5 text-base flex items-center justify-center gap-2">
+                                📤 Dar Salida y Cobrar
+                            </button>
+                            <p class="text-[11px] text-surface-400 text-center mt-3">El ingreso lo registra el LPR automáticamente</p>
+                        </div>
+
+                        <!-- Ingreso manual -->
+                        <div class="main-card p-4">
+                            <details class="group">
+                                <summary class="text-xs font-semibold text-surface-500 cursor-pointer hover:text-surface-700">⚠️ Ingreso manual (respaldo)</summary>
+                                <div class="mt-3 pt-3 border-t border-surface-100">
+                                    <input type="text" id="placa-input-manual" placeholder="Placa" class="input-field placa mb-2" style="font-size:18px;">
+                                    <select id="tipo-vehiculo-ingreso" class="input-field mb-2">
+                                        <option value="Automovil">🚗 Automóvil</option>
+                                        <option value="Moto">🏍️ Moto</option>
+                                        <option value="Camioneta">🚙 Camioneta</option>
+                                        <option value="Camion">🚛 Camión</option>
+                                    </select>
+                                    <button onclick="registrarIngresoManual()" class="w-full btn-success text-sm">📥 Registrar Ingreso</button>
+                                </div>
+                            </details>
+                        </div>
+
+                        <!-- Ticket Ingreso -->
+                        <div id="ticket-ingreso-card" class="hidden bg-white p-6 rounded-2xl border-2 border-blue-500 shadow-lg text-center relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
+                            <p class="text-xs font-bold text-slate-500 tracking-widest mb-1">TICKET DE INGRESO</p>
+                            <p id="ticket-ingreso-placa" class="text-3xl font-black text-slate-800 my-2"></p>
+                            <div class="flex justify-center items-center gap-3 text-sm text-slate-700 font-mono bg-slate-50 border border-slate-200 py-2 rounded-lg my-4">
+                                <span id="ticket-ingreso-hora"></span>
+                                <span class="text-slate-300">|</span>
+                                <span id="ticket-ingreso-tipo"></span>
+                            </div>
+                            <button type="button" onclick="imprimirTicketIngreso()" class="w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-md">
+                                <span aria-hidden="true">🖨️</span> Imprimir Ticket de Ingreso
+                            </button>
+                        </div>
+
+                        <!-- Ticket Cobro (salida) -->
+                        <div id="cobro-card" class="hidden bg-white p-6 rounded-2xl border-2 border-emerald-500 shadow-lg text-center relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
+                            <p class="text-xs font-bold text-slate-500 tracking-widest mb-1">MONTO A COBRAR</p>
+                            <p id="cobro-monto" class="text-5xl font-black text-emerald-600 my-2">$ 0</p>
+                            <div class="flex justify-center items-center gap-3 text-sm text-slate-700 font-mono bg-slate-50 border border-slate-200 py-2 rounded-lg my-4">
+                                <span id="cobro-placa" class="font-bold text-slate-900"></span>
+                                <span class="text-slate-300">|</span>
+                                <span id="cobro-horas"></span>
+                            </div>
+                            <button type="button" onclick="imprimirTicketUltimo()" class="w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-md">
+                                <span aria-hidden="true">🖨️</span> Imprimir Factura
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Derecha: Tablas (Vehículos Activos e Historial Diario) -->
+                    <div class="lg:col-span-2 space-y-6">
+                        
+                        <!-- Vehículos Activos -->
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                            <div class="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+                                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <span aria-hidden="true">🚙</span> Vehículos en Parqueadero
+                                </h3>
+                                <span class="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full border border-blue-200">
+                                    Activos: <span id="contador-vehiculos">0</span>
+                                </span>
+                            </div>
+                            
+                            <div class="overflow-y-auto max-h-[350px] relative no-scrollbar">
+                                <table class="w-full text-left text-sm text-slate-700">
+                                    <thead class="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th scope="col" class="px-5 py-3">Placa</th>
+                                            <th scope="col" class="px-5 py-3 hidden sm:table-cell">Ingreso</th>
+                                            <th scope="col" class="px-5 py-3">Tipo</th>
+                                            <th scope="col" class="px-5 py-3 text-right">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-vehiculos-activos" class="divide-y divide-slate-100">
+                                        <!-- Aquí JS insertará las filas dinámicas -->
+                                    </tbody>
+                                </table>
+                                
+                                <!-- Mensaje cuando está vacío -->
+                                <div id="mensaje-vacio" class="text-center py-10 text-slate-400 hidden flex-col items-center justify-center bg-white">
+                                    <span class="text-4xl block mb-3 opacity-50" aria-hidden="true">🅿️</span>
+                                    No hay vehículos en el parqueadero.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Historial Diario (Mostrado al inicio) -->
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                            <div class="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+                                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <span aria-hidden="true">📋</span> Historial de Hoy
+                                </h3>
+                            </div>
+                            <div class="overflow-y-auto max-h-[300px] no-scrollbar">
+                                <table class="w-full text-left text-sm text-slate-700">
+                                    <thead class="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th scope="col" class="px-5 py-3">Placa</th>
+                                            <th scope="col" class="px-5 py-3">Ingreso</th>
+                                            <th scope="col" class="px-5 py-3">Salida</th>
+                                            <th scope="col" class="px-5 py-3 text-right">Cobro</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-historial-inicio" class="divide-y divide-slate-100">
+                                        <!-- Aquí JS insertará las filas de historial de hoy -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 2: CLIENTES MENSUALES -->
+            <div id="vista-mensuales" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-2xl mx-auto">
+                    <h2 class="font-bold text-slate-800 text-lg mb-6 flex items-center gap-2">
+                        <span class="bg-amber-100 p-2 rounded-lg text-amber-600" aria-hidden="true">👑</span> Registrar Cliente Mensual
+                    </h2>
+                    <form id="form-mensual" onsubmit="registrarMensualidad(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="men-nombre" class="block text-xs font-bold text-slate-600 mb-1">NOMBRE DEL CLIENTE</label>
+                                <input type="text" id="men-nombre" required title="Nombre completo del cliente" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-amber-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="men-tel" class="block text-xs font-bold text-slate-600 mb-1">TELÉFONO</label>
+                                <input type="text" id="men-tel" required title="Número de teléfono" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-amber-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="men-placa" class="block text-xs font-bold text-slate-600 mb-1">PLACA DEL VEHÍCULO</label>
+                                <input type="text" id="men-placa" required placeholder="XYZ123" title="Placa del vehículo" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 font-mono uppercase focus:bg-white focus:border-amber-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="men-tipo" class="block text-xs font-bold text-slate-600 mb-1">TIPO DE VEHÍCULO</label>
+                                <select id="men-tipo" onchange="actualizarValorMensualidad()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-amber-500 focus:outline-none">
+                                    <option value="Moto">🏍️ Moto</option>
+                                    <option value="Automovil">🚗 Automóvil</option>
+                                    <option value="Camioneta">🚙 Camioneta</option>
+                                    <option value="Camion">🚛 Camión</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="men-valor" class="block text-xs font-bold text-slate-600 mb-1">VALOR MENSUALIDAD (automático)</label>
+                                <input type="number" id="men-valor" readonly class="w-full bg-slate-100 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 font-mono focus:outline-none">
+                                <p class="text-[10px] text-slate-400 mt-1">El valor se asigna según el tipo de vehículo</p>
+                            </div>
+                            <div></div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="men-inicio" class="block text-xs font-bold text-slate-600 mb-1">FECHA DE INICIO</label>
+                                <input type="date" id="men-inicio" required title="Fecha de inicio de la mensualidad" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-amber-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="men-fin" class="block text-xs font-bold text-slate-600 mb-1">FECHA DE VENCIMIENTO</label>
+                                <input type="date" id="men-fin" required title="Fecha de vencimiento de la mensualidad" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-amber-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <button type="submit" id="btn-guardar-mensual" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 mt-4 rounded-xl shadow-lg shadow-amber-500/30 transition-transform active:scale-95">
+                            Guardar Mensualidad
+                        </button>
+                        <button type="button" id="btn-cancelar-edicion" onclick="cancelarEdicionMensualidad()" class="hidden w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl transition-colors">
+                            Cancelar edición
+                        </button>
+                    </form>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm max-w-4xl mx-auto overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 bg-slate-50">
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <span aria-hidden="true">📜</span> Clientes Mensuales Registrados
+                        </h3>
+                    </div>
+                    <div class="overflow-x-auto no-scrollbar">
+                        <table class="w-full text-left text-sm text-slate-700">
+                            <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                                <tr>
+                                    <th class="px-4 py-3">Placa</th>
+                                    <th class="px-4 py-3">Nombre</th>
+                                    <th class="px-4 py-3">Teléfono</th>
+                                    <th class="px-4 py-3">Valor</th>
+                                    <th class="px-4 py-3">Vigencia</th>
+                                    <th class="px-4 py-3 text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-clientes-mensuales" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 2.5: TARIFAS -->
+            <div id="vista-tarifas" class="hidden space-y-6">
+                <div class="main-card p-6 max-w-2xl mx-auto">
+                    <h2 class="text-lg font-bold text-surface-800 mb-2 flex items-center gap-2">
+                        <span>💰</span> Configuración de Tarifas
+                    </h2>
+                    <p class="text-sm text-surface-500 mb-6">Define el valor por hora y mensualidad para cada tipo de vehículo.</p>
+                    <div class="space-y-4" id="tarifas-tenant-inputs"></div>
+                    <button onclick="guardarTarifasTenant()" class="btn-primary w-full mt-6">💾 Guardar Tarifas</button>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 3: HISTORIAL COMPLETO -->
+            <div id="vista-historial" class="hidden space-y-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <h2 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                        <span class="bg-purple-100 p-2 rounded-lg text-purple-600" aria-hidden="true">📅</span> Histórico de Registros
+                    </h2>
+                    <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
+                        <label for="filtro-fecha" class="text-xs text-slate-500 font-bold uppercase">Fecha:</label>
+                        <input type="date" id="filtro-fecha" aria-label="Filtrar por fecha" title="Filtrar historial por fecha" onchange="cargarHistorialCompleto()" class="flex-1 md:flex-none bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-sm text-slate-900 focus:outline-none focus:border-purple-500 focus:bg-white">
+                        <label for="filtro-parqueadero" class="text-xs text-slate-500 font-bold uppercase ml-2">Parqueadero:</label>
+                        <select id="filtro-parqueadero" onchange="cargarHistorialCompleto()" class="bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-sm text-slate-900 focus:outline-none focus:border-purple-500 focus:bg-white">
+                            <option value="">Todos</option>
+                        </select>
+                        <button type="button" onclick="exportarExcel()" class="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors flex items-center gap-1">
+                            📥 Exportar Excel
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-white p-0 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto no-scrollbar">
+                        <table class="w-full text-left text-sm text-slate-700">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-4">Placa</th>
+                                    <th class="p-4">Ingreso</th>
+                                    <th class="p-4">Salida</th>
+                                    <th class="p-4">Tipo</th>
+                                    <th class="p-4">Parqueadero</th>
+                                    <th class="p-4 text-right">Cobrado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-historial-completo" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 4: USUARIOS (Solo Admin) -->
+            <div id="vista-config" class="hidden space-y-6">
+                <!-- SECCIÓN: MI ORGANIZACIÓN Y PERFIL (solo admin de tenant, no superadmin) -->
+                <div id="seccion-mi-cliente" class="hidden bg-white p-6 rounded-2xl border border-amber-200 shadow-sm max-w-5xl mx-auto">
+                    <h2 class="font-bold text-slate-800 text-lg mb-2 flex items-center gap-2">
+                        <span class="bg-amber-100 p-2 rounded-lg text-amber-600" aria-hidden="true">🏢</span> Mi Perfil y Organización
+                    </h2>
+                    <p class="text-sm text-slate-500 mb-4">Edita tus datos personales y los de tu organización. Deja en blanco los campos que no quieras cambiar.</p>
+
+                    <!-- Datos del administrador -->
+                    <h3 class="font-semibold text-slate-700 text-sm mb-3 flex items-center gap-1">
+                        <span>👤</span> Tus datos de acceso
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">TU NOMBRE</label>
+                            <input type="text" id="mi-perfil-nombre" placeholder="Tu nombre completo" title="Tu nombre personal" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-amber-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">USUARIO (login)</label>
+                            <input type="text" id="mi-perfil-username" placeholder="admin" title="Nombre de usuario para iniciar sesión" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-amber-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">NUEVA CONTRASEÑA</label>
+                            <input type="password" id="mi-perfil-password" placeholder="••••••••" title="Dejar vacío para no cambiar" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-amber-500 focus:outline-none">
+                            <p class="text-[10px] text-slate-400 mt-1">Deja vacío para mantener la actual</p>
+                        </div>
+                    </div>
+
+                    <!-- Datos de la organización -->
+                    <h3 class="font-semibold text-slate-700 text-sm mb-3 flex items-center gap-1">
+                        <span>🏢</span> Datos de la organización
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">NOMBRE DE LA ORGANIZACIÓN</label>
+                            <input type="text" id="mi-cliente-nombre" placeholder="Ej: Parqueaderos S.A." title="Nombre de tu empresa u organización" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-amber-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">SLUG (identificador único)</label>
+                            <input type="text" id="mi-cliente-slug" placeholder="ej: mi-parqueadero" title="Identificador único en el sistema" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 font-mono focus:bg-white focus:border-amber-500 focus:outline-none">
+                        </div>
+                    </div>
+                    <button onclick="guardarMiPerfil()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-6 rounded-xl transition-colors">💾 Guardar Todos los Cambios</button>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-5xl mx-auto">
+                    <h2 class="font-bold text-slate-800 text-lg mb-2 flex items-center gap-2">
+                        <span class="bg-blue-100 p-2 rounded-lg text-blue-600" aria-hidden="true">👤</span> Gestión de Usuarios
+                    </h2>
+                    <p class="text-sm text-slate-500 mb-6">Registra empleados, define su rol y asigna permisos para las secciones del sistema.</p>
+
+                    <form id="form-usuario" onsubmit="guardarUsuario(event)" class="space-y-4 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="usr-nombre" class="block text-xs font-bold text-slate-600 mb-1">NOMBRE COMPLETO</label>
+                                <input type="text" id="usr-nombre" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="usr-username" class="block text-xs font-bold text-slate-600 mb-1">USUARIO</label>
+                                <input type="text" id="usr-username" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="usr-password" class="block text-xs font-bold text-slate-600 mb-1">CONTRASEÑA</label>
+                                <input type="password" id="usr-password" placeholder="Deja vacío para conservar la actual" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="usr-rol" class="block text-xs font-bold text-slate-600 mb-1">ROL</label>
+                                <select id="usr-rol" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none">
+                                    <option value="Operador">Operador</option>
+                                    <option value="Admin">Admin</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                            <p class="text-sm font-semibold text-slate-700">Permisos del usuario</p>
+                            <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                                <span class="text-sm text-slate-700">Ver métricas del panel</span>
+                                <input type="checkbox" id="perm-metricas" class="w-5 h-5 accent-blue-600">
+                            </label>
+                            <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                                <span class="text-sm text-slate-700">Ver y registrar clientes mensuales</span>
+                                <input type="checkbox" id="perm-mensuales" class="w-5 h-5 accent-blue-600">
+                            </label>
+                            <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                                <span class="text-sm text-slate-700">Ver historial completo</span>
+                                <input type="checkbox" id="perm-historial" class="w-5 h-5 accent-blue-600">
+                            </label>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button type="submit" id="btn-guardar-usuario" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/30 transition-transform active:scale-95">
+                                Guardar usuario
+                            </button>
+                            <button type="button" onclick="cancelarEdicionUsuario()" id="btn-cancelar-usuario" class="hidden bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-xl transition-colors">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-700">
+                            <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                                <tr>
+                                    <th class="px-4 py-3">Usuario</th>
+                                    <th class="px-4 py-3">Rol</th>
+                                    <th class="px-4 py-3">Permisos</th>
+                                    <th class="px-4 py-3 text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-usuarios" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 5: PARQUEADEROS (Solo Admin) -->
+            <div id="vista-tenants" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-5xl mx-auto">
+                    <h2 class="font-bold text-slate-800 text-lg mb-2 flex items-center gap-2">
+                        <span class="bg-emerald-100 p-2 rounded-lg text-emerald-600" aria-hidden="true">🏢</span> Gestión de Parqueaderos
+                    </h2>
+                    <p class="text-sm text-slate-500 mb-6">Crea y administra múltiples parqueaderos. Cada uno tendrá sus propios usuarios, clientes y registros independientes.</p>
+
+                    <!-- Formulario para crear tenant -->
+                    <form id="form-tenant" onsubmit="crearTenant(event)" class="space-y-4 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="tenant-nombre" class="block text-xs font-bold text-slate-600 mb-1">NOMBRE DEL PARQUEADERO</label>
+                                <input type="text" id="tenant-nombre" required placeholder="Ej: Parqueadero Norte" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-emerald-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="tenant-slug" class="block text-xs font-bold text-slate-600 mb-1">IDENTIFICADOR (slug)</label>
+                                <input type="text" id="tenant-slug" required placeholder="Ej: parqueadero-norte" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 font-mono text-sm focus:bg-white focus:border-emerald-500 focus:outline-none">
+                                <p class="text-[10px] text-slate-400 mt-1">Solo letras, números y guiones. Se usa para iniciar sesión: usuario@slug</p>
+                            </div>
+                        </div>
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-emerald-600/30 transition-transform active:scale-95">
+                            ➕ Crear Parqueadero
+                        </button>
+                    </form>
+
+                    <!-- Formulario para agregar admin al tenant -->
+                    <div id="seccion-usuario-tenant" class="hidden border-t border-slate-200 pt-6 mt-6">
+                        <h3 class="font-semibold text-slate-700 mb-3">Agregar usuario a <span id="tenant-seleccionado-nombre" class="text-emerald-600"></span></h3>
+                        <form id="form-usuario-tenant" onsubmit="crearUsuarioEnTenant(event)" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="ut-username" class="block text-xs font-bold text-slate-600 mb-1">USUARIO</label>
+                                    <input type="text" id="ut-username" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label for="ut-password" class="block text-xs font-bold text-slate-600 mb-1">CONTRASEÑA</label>
+                                    <input type="password" id="ut-password" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label for="ut-nombre" class="block text-xs font-bold text-slate-600 mb-1">NOMBRE COMPLETO</label>
+                                    <input type="text" id="ut-nombre" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label for="ut-rol" class="block text-xs font-bold text-slate-600 mb-1">ROL</label>
+                                    <select id="ut-rol" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none">
+                                        <option value="Admin">Admin</option>
+                                        <option value="Operador">Operador</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-blue-600/30 transition-transform active:scale-95">
+                                👤 Agregar Usuario
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Lista de tenants -->
+                    <div class="border-t border-slate-200 pt-6 mt-6">
+                        <h3 class="font-semibold text-slate-700 mb-3">Parqueaderos registrados</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-slate-700">
+                                <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                                    <tr>
+                                        <th class="px-4 py-3">Nombre</th>
+                                        <th class="px-4 py-3">Slug</th>
+                                        <th class="px-4 py-3">Estado</th>
+                                        <th class="px-4 py-3 text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-tenants" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 6: CONTABILIDAD -->
+            <div id="vista-contabilidad" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-5xl mx-auto">
+                    <h2 class="font-bold text-slate-800 text-lg mb-2 flex items-center gap-2">
+                        <span class="bg-teal-100 p-2 rounded-lg text-teal-600" aria-hidden="true">📊</span> Contabilidad
+                    </h2>
+                    <p class="text-sm text-slate-500 mb-6">Resumen de ingresos y gastos del parqueadero.</p>
+
+                    <!-- Resumen -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+                            <p class="text-xs text-emerald-600 font-bold">INGRESOS PARQUEADERO</p>
+                            <p id="cont-ingresos-parq" class="text-xl font-black text-emerald-700">$ 0</p>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                            <p class="text-xs text-blue-600 font-bold">MENSUALIDADES</p>
+                            <p id="cont-ingresos-mens" class="text-xl font-black text-blue-700">$ 0</p>
+                        </div>
+                        <div class="bg-rose-50 p-4 rounded-xl border border-rose-200">
+                            <p class="text-xs text-rose-600 font-bold">GASTOS</p>
+                            <p id="cont-gastos" class="text-xl font-black text-rose-700">$ 0</p>
+                        </div>
+                        <div class="bg-slate-100 p-4 rounded-xl border border-slate-300">
+                            <p class="text-xs text-slate-600 font-bold">BALANCE</p>
+                            <p id="cont-balance" class="text-xl font-black text-slate-800">$ 0</p>
+                        </div>
+                    </div>
+
+                    <!-- Registrar gasto -->
+                    <div class="border-t border-slate-200 pt-4 mb-6">
+                        <h3 class="font-semibold text-slate-700 mb-3">➕ Registrar Gasto</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <input type="text" id="gasto-desc" placeholder="Descripción" class="bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900">
+                            <input type="number" id="gasto-monto" placeholder="Monto" class="bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900">
+                            <select id="gasto-cat" class="bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900">
+                                <option value="General">General</option>
+                                <option value="Servicios">Servicios</option>
+                                <option value="Mantenimiento">Mantenimiento</option>
+                                <option value="Nomina">Nómina</option>
+                                <option value="Arriendo">Arriendo</option>
+                                <option value="Otros">Otros</option>
+                            </select>
+                            <button onclick="registrarGasto()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-xl">Registrar</button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de gastos -->
+                    <div>
+                        <h3 class="font-semibold text-slate-700 mb-3">📋 Gastos registrados</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-slate-700">
+                                <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                                    <tr>
+                                        <th class="px-4 py-3">Fecha</th>
+                                        <th class="px-4 py-3">Descripción</th>
+                                        <th class="px-4 py-3">Categoría</th>
+                                        <th class="px-4 py-3 text-right">Monto</th>
+                                        <th class="px-4 py-3 text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-gastos" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 7: CLIENTES (Solo Admin Principal) -->
+            <div id="vista-clientes" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-5xl mx-auto">
+                    <h2 class="font-bold text-slate-800 text-lg mb-2 flex items-center gap-2">
+                        <span class="bg-purple-100 p-2 rounded-lg text-purple-600" aria-hidden="true">🏢</span> Gestión de Clientes (Organizaciones)
+                    </h2>
+                    <p class="text-sm text-slate-500 mb-6">Cada cliente es una organización independiente. Sus parqueaderos y datos están completamente aislados.</p>
+
+                    <form id="form-cliente" onsubmit="crearCliente(event)" class="space-y-4 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="cliente-nombre" class="block text-xs font-bold text-slate-600 mb-1">NOMBRE DEL CLIENTE (Organización)</label>
+                                <input type="text" id="cliente-nombre" required placeholder="Ej: Parqueaderos S.A." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-purple-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="cliente-slug" class="block text-xs font-bold text-slate-600 mb-1">IDENTIFICADOR (slug)</label>
+                                <input type="text" id="cliente-slug" required placeholder="Ej: parqueaderos-sa" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 font-mono text-sm focus:bg-white focus:border-purple-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="cliente-admin-user" class="block text-xs font-bold text-slate-600 mb-1">USUARIO ADMIN DEL CLIENTE</label>
+                                <input type="text" id="cliente-admin-user" required placeholder="Ej: admin" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-purple-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="cliente-admin-pass" class="block text-xs font-bold text-slate-600 mb-1">CONTRASEÑA INICIAL</label>
+                                <input type="text" id="cliente-admin-pass" required placeholder="Ej: Admin2025" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-purple-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-400">Se creará automáticamente un parqueadero inicial y un usuario admin para que el cliente pueda ingresar.</p>
+                        <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-purple-600/30 transition-transform active:scale-95">
+                            ➕ Crear Cliente
+                        </button>
+                    </form>
+
+                    <div class="border-t border-slate-200 pt-6">
+                        <h3 class="font-semibold text-slate-700 mb-3">Clientes registrados</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-slate-700">
+                                <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                                    <tr>
+                                        <th class="px-4 py-3">Nombre</th>
+                                        <th class="px-4 py-3">Slug</th>
+                                        <th class="px-4 py-3">Funciones</th>
+                                        <th class="px-4 py-3 text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-clientes" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Modal de funciones del cliente -->
+                    <div id="modal-features" class="hidden modal-overlay">
+                        <div class="modal-box">
+                            <h3 class="font-bold text-lg mb-4">⚙️ Funciones de <span id="feature-cliente-nombre"></span></h3>
+                            <div class="space-y-3" id="feature-checkboxes"></div>
+                            <div class="flex gap-3 mt-6">
+                                <button onclick="guardarFeatures()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl">Guardar</button>
+                                <button onclick="document.getElementById('modal-features').classList.add('hidden')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal de tarifas del cliente -->
+                    <div id="modal-tarifas" class="hidden modal-overlay">
+                        <div class="modal-box" style="max-width:560px;">
+                            <h3 class="font-bold text-lg mb-4">💰 Tarifas de <span id="tarifa-cliente-nombre"></span></h3>
+                            <div class="space-y-3" id="tarifa-inputs"></div>
+                            <div class="flex gap-3 mt-6">
+                                <button onclick="guardarTarifas()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl">Guardar Tarifas</button>
+                                <button onclick="document.getElementById('modal-tarifas').classList.add('hidden')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Modal de editar cliente -->
+                    <div id="modal-editar-cliente" class="hidden modal-overlay">
+                        <div class="modal-box">
+                            <h3 class="font-bold text-lg mb-4">✏️ Editar Cliente</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">NOMBRE</label>
+                                    <input type="text" id="edit-cliente-nombre" placeholder="Nombre del cliente" title="Nombre de la organización" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 focus:bg-white focus:border-amber-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">SLUG (identificador)</label>
+                                    <input type="text" id="edit-cliente-slug" placeholder="identificador-unico" title="Identificador único del cliente" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 font-mono focus:bg-white focus:border-amber-500 focus:outline-none">
+                                </div>
+                            </div>
+                            <div class="flex gap-3 mt-6">
+                                <button onclick="guardarEdicionCliente()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl">Guardar Cambios</button>
+                                <button onclick="document.getElementById('modal-editar-cliente').classList.add('hidden')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal de convertir a mensual -->
+                    <div id="modal-convertir-mensual" class="hidden modal-overlay">
+                        <div class="modal-box">
+                            <h3 class="font-bold text-lg mb-4">👑 Convertir a Cliente Mensual</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">PLACA</label>
+                                    <input type="text" id="conv-placa" readonly class="w-full bg-slate-100 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 font-mono font-bold">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">NOMBRE DEL CLIENTE</label>
+                                    <input type="text" id="conv-nombre" placeholder="Nombre completo" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">TELÉFONO</label>
+                                    <input type="text" id="conv-telefono" placeholder="Número de teléfono" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900">
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 mb-1">TIPO VEHÍCULO</label>
+                                        <select id="conv-tipo" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900">
+                                            <option value="Automovil">🚗 Automóvil</option>
+                                            <option value="Moto">🏍️ Moto</option>
+                                            <option value="Camioneta">🚙 Camioneta</option>
+                                            <option value="Camion">🚛 Camión</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 mb-1">VALOR</label>
+                                        <input type="number" id="conv-valor" placeholder="0" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 mb-1">FECHA INICIO</label>
+                                        <input type="date" id="conv-inicio" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 mb-1">FECHA FIN</label>
+                                        <input type="date" id="conv-fin" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-3 mt-6">
+                                <button onclick="convertirAMensual()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl">Convertir a Mensual</button>
+                                <button onclick="document.getElementById('modal-convertir-mensual').classList.add('hidden')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <div class="printable-area no-print">
+        <div id="ticket-laser" class="ticket-laser hidden mx-auto my-8">
+            <div class="text-center mb-4">
+                <h2 class="text-2xl font-black">PARQUEADERO LPR</h2>
+                <p class="text-sm text-slate-600">Comprobante de pago</p>
+            </div>
+            <div class="linea"></div>
+            <div class="grid">
+                <div>
+                    <p class="etiqueta">Placa</p>
+                    <p id="laser-placa" class="valor"></p>
+                </div>
+                <div>
+                    <p class="etiqueta">Fecha / Hora</p>
+                    <p id="laser-fecha" class="valor"></p>
+                </div>
+            </div>
+            <div class="grid mt-3">
+                <div>
+                    <p class="etiqueta">Ingreso</p>
+                    <p id="laser-ingreso" class="valor"></p>
+                </div>
+                <div>
+                    <p class="etiqueta">Salida</p>
+                    <p id="laser-salida" class="valor"></p>
+                </div>
+            </div>
+            <div class="grid mt-3">
+                <div>
+                    <p class="etiqueta">Tiempo</p>
+                    <p id="laser-tiempo" class="valor"></p>
+                </div>
+                <div>
+                    <p class="etiqueta">Tarifa</p>
+                    <p id="laser-tarifa" class="valor"></p>
+                </div>
+            </div>
+            <div class="linea"></div>
+            <div class="grid mt-3">
+                <div>
+                    <p class="etiqueta">Atendido por</p>
+                    <p id="laser-cajero" class="valor"></p>
+                </div>
+                <div>
+                    <p class="etiqueta">Total</p>
+                    <p id="laser-total" class="valor text-emerald-600"></p>
+                </div>
+            </div>
+            <div class="linea"></div>
+            <p class="text-center text-sm mt-4 text-slate-600">Gracias por su visita</p>
+        </div>
+    </div>
+
+    <!-- TICKET TÉRMICO -->
+    <div id="ticket-impresion" class="hidden bg-white text-black p-2 text-xs ticket-termico">
+        <div class="ticket-header">
+            <p class="ticket-titulo">PARQUEADERO LPR</p>
+            <p>NIT: 900.123.456-7</p>
+            <p id="ticket-direccion">Cra. 00 # 00 - 00, Bogotá D.C.</p>
+            <p id="ticket-telefono">Tel: (601) 000 0000</p>
+            <p>Comprobante de Pago</p>
+        </div>
+        <p><b>TICKET N°:</b> <span id="ticket-numero"></span></p>
+        <p><b>FECHA:</b> <span id="ticket-fecha"></span></p>
+        <p><b>PLACA:</b> <span id="ticket-placa"></span></p>
+        <p><b>INGRESO:</b> <span id="ticket-ingreso"></span></p>
+        <p><b>SALIDA:</b> <span id="ticket-salida"></span></p>
+        <p><b>TIEMPO:</b> <span id="ticket-horas"></span> hora(s)</p>
+        <p><b>ATENDIÓ:</b> <span id="ticket-cajero"></span></p>
+        <div class="ticket-total">
+            <p class="ticket-titulo">TOTAL: <span id="ticket-total"></span></p>
+        </div>
+        <p class="ticket-gracias">¡Gracias por su visita!</p>
+    </div>
+
+    <!-- SCRIPT APP -->
+    <script>
+        const API_URL = (() => {
+            if (window.PARQUEADERO_API_URL) {
+                return window.PARQUEADERO_API_URL.replace(/\/$/, "");
+            }
+            const hostname = window.location.hostname;
+            const protocol = window.location.protocol;
+            const port = window.location.port;
+
+            if (hostname === "parqueaderopro.online" || hostname === "www.parqueaderopro.online") {
+                return `https://${hostname}/api`;
+            }
+
+            // Si el frontend se sirve desde el mismo servidor (mismo puerto), la API está en la raíz
+            if (port === "8000" || port === "") {
+                return `${protocol}//${hostname}${port ? `:${port}` : ""}`;
+            }
+
+            // Si el frontend está en otro puerto (dev server), apuntar al backend en 8000
+            if (["8080", "5500", "3000"].includes(port)) {
+                return `http://${hostname}:8000`;
+            }
+
+            return `${protocol}//${hostname}${port ? `:${port}` : ""}`;
+        })();
+        const originalFetch = window.fetch.bind(window);
+        let tokenActual = null;
+
+        window.fetch = (url, options = {}) => {
+            const headers = new Headers(options.headers || {});
+            if (tokenActual) {
+                headers.set("Authorization", `Bearer ${tokenActual}`);
+            }
+            return originalFetch(url, { credentials: "include", ...options, headers });
+        };
+
+        let usuarioActual = null;
+        let ultimoCobro = null;
+        let intervaloActualizacion;
+        let contadorTickets = 0;
+        let usuarioSeleccionadoParaPermisos = null;
+        let usuarioEdicionId = null;
+
+        const permisosPorDefecto = { metricas: false, mensuales: false, historial: false };
+
+        // Cache de clientes mensuales cargados (placa -> datos) para editar sin re-consultar
+        let clientesMensualesCache = {};
+        let mensualidadEnEdicion = null; // null = registrando nuevo, string = placa en edición
+
+        // Datos del parqueadero (para el ticket térmico) — ajusta con los datos reales de tu negocio
+        const DATOS_PARQUEADERO = {
+            nombre: "PARQUEADERO LPR",
+            nit: "900.123.456-7",
+            direccion: "Cra. 00 # 00 - 00, Bogotá D.C.",
+            telefono: "Tel: (601) 000 0000"
+        };
+
+        // Formato moneda
+        const formatoMoneda = (valor) => {
+            return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(valor);
+        };
+
+        // Formato Hora
+        const formatoHora = (fechaString) => {
+            if(!fechaString) return '--:--';
+            return new Date(fechaString).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        };
+
+        // Formato Fecha (día/mes/año) para el ticket
+        const formatoFecha = (fechaString) => {
+            const fecha = fechaString ? new Date(fechaString) : new Date();
+            return fecha.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        };
+
+        // Obtener fecha actual YYYY-MM-DD
+        const obtenerFechaHoy = () => new Date().toISOString().split('T')[0];
+
+        // PERMISOS DEL TRABAJADOR (se leen del usuario autenticado, no desde localStorage)
+        function obtenerPermisos() {
+            const permisos = usuarioActual?.permisos || {};
+            return { ...permisosPorDefecto, ...permisos };
+        }
+
+        function aplicarPermisosTrabajador() {
+            const permisos = obtenerPermisos();
+
+            document.querySelectorAll('.restringible').forEach(el => {
+                const clave = el.dataset.perm;
+                if (permisos[clave]) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+
+            if (permisos.metricas) cargarEstadisticas();
+            if (permisos.historial) {
+                document.getElementById("filtro-fecha").value = obtenerFechaHoy();
+                cargarHistorialCompleto();
+            }
+        }
+
+        function cargarFormularioPermisos() {
+            const permisos = usuarioSeleccionadoParaPermisos?.permisos || obtenerPermisos();
+            document.getElementById("perm-metricas").checked = !!permisos.metricas;
+            document.getElementById("perm-mensuales").checked = !!permisos.mensuales;
+            document.getElementById("perm-historial").checked = !!permisos.historial;
+        }
+
+        async function guardarPermisosForm(e) {
+            e.preventDefault();
+            if (!usuarioSeleccionadoParaPermisos) {
+                alert("Seleccione un usuario de la lista para asignar permisos.");
+                return;
+            }
+
+            const permisos = {
+                metricas: document.getElementById("perm-metricas").checked,
+                mensuales: document.getElementById("perm-mensuales").checked,
+                historial: document.getElementById("perm-historial").checked
+            };
+
+            const res = await fetch(`${API_URL}/usuarios/${usuarioSeleccionadoParaPermisos.id}/permisos/`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ permisos })
+            });
+
+            if (res.ok) {
+                alert("Permisos actualizados correctamente.");
+                cargarUsuarios();
+            } else {
+                const err = await res.json();
+                alert("Error: " + err.detail);
+            }
+        }
+
+        function seleccionarUsuarioParaPermisos(usuario) {
+            usuarioSeleccionadoParaPermisos = usuario;
+            cargarFormularioPermisos();
+            document.getElementById("btn-cancelar-usuario").classList.remove("hidden");
+            document.getElementById("btn-guardar-usuario").textContent = `Guardar permisos de ${usuario.nombre}`;
+        }
+
+        async function guardarUsuario(e) {
+            e.preventDefault();
+            const password = document.getElementById("usr-password").value;
+            const payload = {
+                username: document.getElementById("usr-username").value.trim().toLowerCase(),
+                nombre: document.getElementById("usr-nombre").value.trim(),
+                rol: document.getElementById("usr-rol").value,
+                permisos: {
+                    metricas: document.getElementById("perm-metricas").checked,
+                    mensuales: document.getElementById("perm-mensuales").checked,
+                    historial: document.getElementById("perm-historial").checked
+                }
+            };
+
+            if (password) {
+                payload.password = password;
+            } else if (!usuarioEdicionId) {
+                alert("La contraseña es obligatoria para crear un usuario.");
+                return;
+            }
+
+            const url = usuarioEdicionId ? `${API_URL}/usuarios/${usuarioEdicionId}` : `${API_URL}/usuarios/`;
+            const method = usuarioEdicionId ? "PUT" : "POST";
+            const res = await fetch(url, {
+                method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                cancelarEdicionUsuario();
+                document.getElementById("form-usuario").reset();
+                document.getElementById("usr-rol").value = "Operador";
+                cargarUsuarios();
+                alert(usuarioEdicionId ? "Usuario actualizado." : "Usuario creado correctamente.");
+            } else {
+                const err = await res.json();
+                alert("Error: " + err.detail);
+            }
+        }
+
+        function cancelarEdicionUsuario() {
+            usuarioEdicionId = null;
+            usuarioSeleccionadoParaPermisos = null;
+            document.getElementById("form-usuario").reset();
+            document.getElementById("usr-rol").value = "Operador";
+            document.getElementById("btn-cancelar-usuario").classList.add("hidden");
+            document.getElementById("btn-guardar-usuario").textContent = "Guardar usuario";
+        }
+
+        async function cargarUsuarios() {
+            try {
+                const res = await fetch(`${API_URL}/usuarios/`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const tbody = document.getElementById("tabla-usuarios");
+                tbody.innerHTML = "";
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-center text-slate-400">No hay usuarios registrados.</td></tr>`;
+                    return;
+                }
+
+                data.forEach(usuario => {
+                    const permisosTexto = [
+                        usuario.permisos?.metricas ? "Métricas" : null,
+                        usuario.permisos?.mensuales ? "Mensuales" : null,
+                        usuario.permisos?.historial ? "Historial" : null,
+                    ].filter(Boolean).join(", ") || "Sin permisos";
+
+                    const row = document.createElement("tr");
+                    row.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
+                    row.innerHTML = `
+                        <td class="px-4 py-3">
+                            <div class="font-semibold text-slate-900">${usuario.nombre}</div>
+                            <div class="text-xs text-slate-500">@${usuario.username}</div>
+                        </td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-bold ${usuario.rol === 'Admin' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}">${usuario.rol}</span></td>
+                        <td class="px-4 py-3 text-slate-500 text-xs">${permisosTexto}</td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button type="button" onclick="editarUsuario(${usuario.id})" class="text-xs bg-blue-50 text-blue-600 px-3 py-2 rounded-lg font-bold mr-2">Editar</button>
+                            <button type="button" onclick="eliminarUsuario(${usuario.id})" class="text-xs bg-rose-50 text-rose-600 px-3 py-2 rounded-lg font-bold">Borrar</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (e) {}
+        }
+
+        async function editarUsuario(id) {
+            const res = await fetch(`${API_URL}/usuarios/`);
+            if (!res.ok) return;
+            const usuarios = await res.json();
+            const usuario = usuarios.find(u => u.id === id);
+            if (!usuario) return;
+            usuarioEdicionId = id;
+            usuarioSeleccionadoParaPermisos = usuario;
+            document.getElementById("usr-nombre").value = usuario.nombre;
+            document.getElementById("usr-username").value = usuario.username;
+            document.getElementById("usr-password").value = "";
+            document.getElementById("usr-rol").value = usuario.rol;
+            document.getElementById("perm-metricas").checked = !!usuario.permisos?.metricas;
+            document.getElementById("perm-mensuales").checked = !!usuario.permisos?.mensuales;
+            document.getElementById("perm-historial").checked = !!usuario.permisos?.historial;
+            document.getElementById("btn-cancelar-usuario").classList.remove("hidden");
+            document.getElementById("btn-guardar-usuario").textContent = `Actualizar ${usuario.nombre}`;
+            document.getElementById("form-usuario").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        async function eliminarUsuario(id) {
+            if (!confirm("¿Desea eliminar este usuario?")) return;
+            const res = await fetch(`${API_URL}/usuarios/${id}`, { method: "DELETE" });
+            if (res.ok) {
+                cargarUsuarios();
+            } else {
+                const err = await res.json();
+                alert("Error: " + err.detail);
+            }
+        }
+
+        // INICIALIZACIÓN Y PERSISTENCIA DE SESIÓN
+        document.addEventListener("DOMContentLoaded", () => {
+            // Registrar Service Worker para PWA
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            }
+            // Intentar auto-login con token guardado
+            autoLogin().then(ok => { if (!ok) cargarSesionActual(); });
+        });
+
+        async function cargarSesionActual() {
+            try {
+                const res = await fetch(`${API_URL}/me/`);
+                if (res.ok) {
+                    usuarioActual = await res.json();
+                    iniciarDashboard();
+                } else {
+                    tokenActual = null;
+                    mostrarLogin();
+                }
+            } catch (e) {
+                mostrarLogin();
+            }
+        }
+
+        function mostrarLogin() {
+            document.getElementById("login-view").classList.remove("hidden");
+            document.getElementById("dashboard-view").classList.add("hidden");
+            usuarioActual = null;
+            tokenActual = null;
+        }
+
+        function iniciarDashboard() {
+            document.getElementById("login-view").classList.add("hidden");
+            document.getElementById("dashboard-view").classList.remove("hidden");
+            document.getElementById("user-nombre").textContent = usuarioActual.nombre;
+            document.getElementById("user-nombre-mob").textContent = usuarioActual.nombre;
+
+            // Superadmin (cliente_id=1): solo ve gestión de clientes, sin parqueadero
+            if (usuarioActual.cliente_id === 1 && usuarioActual.rol === "Admin") {
+                document.getElementById("user-rol").textContent = "SuperAdmin";
+                document.getElementById("user-parqueadero").textContent = "";
+                document.querySelectorAll('.superadmin-only').forEach(el => el.classList.remove('hidden'));
+                // Ocultar panel principal y tabs de parqueadero
+                document.querySelectorAll('#tab-panel, #tab-panel-mob, #tab-mensuales, #tab-mensuales-mob, #tab-historial, #tab-historial-mob, #tab-config, #tab-config-mob, #tab-tenants, #tab-tenants-mob, #admin-metrics, .restringible').forEach(el => el.classList.add('hidden'));
+                // Ir directo a la pestaña de clientes
+                cambiarPestana('clientes');
+                return;
+            }
+
+            document.getElementById("user-rol").textContent = usuarioActual.rol;
+            document.getElementById("user-parqueadero").textContent = usuarioActual.tenant_nombre || usuarioActual.tenant_slug || "";
+
+            if (usuarioActual.rol === "Admin") {
+                document.getElementById("admin-metrics").classList.remove("hidden");
+                document.querySelectorAll('.admin-only, .restringible').forEach(el => el.classList.remove('hidden'));
+                cargarEstadisticas();
+                cargarFormularioPermisos();
+                cargarClientesMensuales();
+                cargarTarifasClienteActual();
+                cargarUsuarios();
+                cargarFiltroParqueaderos();
+                document.getElementById("filtro-fecha").value = obtenerFechaHoy();
+                cargarHistorialCompleto();
+            } else {
+                aplicarPermisosTrabajador();
+                if (obtenerPermisos().mensuales) cargarClientesMensuales();
+                cargarTarifasClienteActual();
+            }
+
+            cargarParqueados();
+            cargarHistorialDiarioInicio();
+            
+            // Limpiar intervalo anterior si existe para evitar duplicados
+            if (intervaloActualizacion) clearInterval(intervaloActualizacion);
+            
+            intervaloActualizacion = setInterval(() => {
+                cargarParqueados();
+                cargarHistorialDiarioInicio();
+            }, 5000); // Actualiza cada 5 seg
+        }
+
+        // LOGIN con soporte biométrico
+        async function hacerLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById("login-user").value.trim().toLowerCase();
+            const p = document.getElementById("login-pass").value.trim();
+
+            try {
+                const res = await fetch(`${API_URL}/login/`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username: u, password: p })
+                });
+
+                if (!res.ok) throw new Error("Credenciales inválidas.");
+
+                const data = await res.json();
+                tokenActual = data.access_token || null;
+                usuarioActual = data;
+
+                iniciarDashboard();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        // La sesión se recupera mediante la cookie HttpOnly del backend.
+        async function autoLogin() {
+            try {
+                const res = await fetch(`${API_URL}/me/`);
+                if (!res.ok) { tokenActual = null; return false; }
+                usuarioActual = await res.json();
+                iniciarDashboard();
+                return true;
+            } catch(e) { return false; }
+        }
+
+        async function cerrarSesion() {
+            try {
+                await fetch(`${API_URL}/logout/`, { method: "POST" });
+            } catch (e) {}
+            tokenActual = null;
+            clearInterval(intervaloActualizacion);
+            location.reload();
+        }
+
+        // TABS / PESTAÑAS
+        function cambiarPestana(idVista) {
+            document.querySelectorAll('[id^="vista-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById("vista-" + idVista).classList.remove("hidden");
+
+            // Un Trabajador no puede entrar a pestañas restringidas
+            if (usuarioActual && usuarioActual.rol !== "Admin") {
+                const permisos = obtenerPermisos();
+                if ((idVista === "mensuales" && !permisos.mensuales) ||
+                    (idVista === "historial" && !permisos.historial) ||
+                    idVista === "config" || idVista === "tenants" || idVista === "clientes" || idVista === "contabilidad" || idVista === "tarifas") {
+                    idVista = "panel";
+                    document.getElementById("vista-panel").classList.remove("hidden");
+                }
+            }
+
+            if (idVista === "config") { cargarFormularioPermisos(); cargarUsuarios(); cargarMiCliente(); }
+            if (idVista === "tenants") cargarTenants();
+            if (idVista === "tarifas") cargarTarifasTenant();
+            if (idVista === "contabilidad") cargarContabilidad();
+            if (idVista === "clientes") cargarClientes();
+            if (idVista === "mensuales") cargarClientesMensuales();
+
+            // Sidebar active state
+            document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'));
+            const activeLink = document.getElementById("tab-" + idVista);
+            if (activeLink) activeLink.classList.add('active');
+
+            // Mobile menu active state
+            actualizarMenuMovil(idVista);
+        }
+
+        // CARGAR TABLA VEHÍCULOS ACTIVOS (INICIO)
+        // Cache de placas activas para detectar nuevos ingresos del LPR
+        let placasActivasAnteriores = new Set();
+
+        async function cargarParqueados() {
+            try {
+                const res = await fetch(`${API_URL}/parqueados/`);
+                const data = await res.json();
+                const tbody = document.getElementById("tabla-vehiculos-activos");
+                const vacioDiv = document.getElementById("mensaje-vacio");
+
+                // Detectar nuevas placas (ingresos del LPR)
+                const placasActuales = new Set(data.map(v => v.placa));
+                if (placasActivasAnteriores.size > 0) {
+                    for (const placa of placasActuales) {
+                        if (!placasActivasAnteriores.has(placa)) {
+                            // Nuevo ingreso detectado por LPR → imprimir ticket
+                            imprimirTicketIngresoLPR(placa);
+                        }
+                    }
+                }
+                placasActivasAnteriores = placasActuales;
+
+                document.getElementById("contador-vehiculos").textContent = data.length;
+                tbody.innerHTML = "";
+
+                if (data.length === 0) {
+                    vacioDiv.classList.remove("hidden");
+                    vacioDiv.classList.add("flex");
+                } else {
+                    vacioDiv.classList.add("hidden");
+                    vacioDiv.classList.remove("flex");
+                    
+                    data.forEach(v => {
+                        const esMensual = v.tipo_cliente === 'Mensual';
+                        const badgeClass = esMensual ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200';
+                        
+                        const row = document.createElement("tr");
+                        row.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
+                        const esDiario = v.tipo_cliente !== 'Mensual';
+                        row.innerHTML = `
+                            <td class="px-5 py-3 font-mono font-bold text-slate-900 text-lg">${v.placa}</td>
+                            <td class="px-5 py-3 hidden sm:table-cell text-slate-500">${formatoHora(v.hora_ingreso)}</td>
+                            <td class="px-5 py-3">
+                                <span class="px-2 py-1 rounded-lg text-xs font-semibold border ${badgeClass}">${v.tipo_cliente}</span>
+                            </td>
+                            <td class="px-5 py-3 text-right whitespace-nowrap">
+                                ${esDiario ? `<button type="button" onclick="abrirConvertirMensual('${v.placa}')" class="text-xs bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white px-3 py-2 rounded-lg font-bold transition-all border border-amber-200 active:scale-95 mr-1">👑 Mensual</button>` : ''}
+                                <button type="button" onclick="forzarSalida('${v.placa}')" class="text-xs bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-2 rounded-lg font-bold transition-all border border-rose-200 active:scale-95">
+                                    Dar Salida
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        // CARGAR HISTORIAL DIARIO (INICIO)
+        async function cargarHistorialDiarioInicio() {
+            try {
+                const hoy = obtenerFechaHoy();
+                const res = await fetch(`${API_URL}/historial/?fecha=${hoy}`);
+                if(res.ok) {
+                    const data = await res.json();
+                    const tbody = document.getElementById("tabla-historial-inicio");
+                    tbody.innerHTML = "";
+                    
+                    // Mostramos solo los que ya salieron hoy (o todos)
+                    const registrosHoy = data.filter(r => r.hora_salida !== null).reverse(); // Los más recientes primero
+
+                    if(registrosHoy.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="4" class="px-5 py-4 text-center text-slate-400">Sin salidas registradas hoy</td></tr>`;
+                        return;
+                    }
+
+                    registrosHoy.forEach(h => {
+                        const esMensual = h.tipo_cliente === 'Mensual';
+                        const celdaCobro = esMensual
+                            ? `<span class="px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">Mensual</span>`
+                            : formatoMoneda(h.total_pagado || 0);
+
+                        const row = document.createElement("tr");
+                        row.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
+                        row.innerHTML = `
+                            <td class="px-5 py-3 font-mono font-bold text-slate-800">${h.placa}</td>
+                            <td class="px-5 py-3 text-slate-500">${formatoHora(h.hora_ingreso)}</td>
+                            <td class="px-5 py-3 text-slate-500">${formatoHora(h.hora_salida)}</td>
+                            <td class="px-5 py-3 font-bold text-emerald-600 text-right">${celdaCobro}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        // INGRESO / SALIDA
+        async function forzarSalidaDesdeInput() {
+            const input = document.getElementById("placa-input");
+            const placa = input.value.trim().toUpperCase();
+            if(!placa) { input.focus(); return; }
+            input.value = "";
+            await forzarSalida(placa);
+        }
+
+        async function registrarIngresoManual() {
+            const input = document.getElementById("placa-input-manual");
+            const placa = input.value.trim().toUpperCase();
+            if(!placa) { input.focus(); return; }
+
+            const tipoVeh = document.getElementById("tipo-vehiculo-ingreso").value;
+
+            const res = await fetch(`${API_URL}/ingreso/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ placa: placa, tipo_vehiculo: tipoVeh })
+            });
+
+            if(res.ok) {
+                const data = await res.json();
+                input.value = "";
+
+                // Mostrar ticket de ingreso
+                const card = document.getElementById("ticket-ingreso-card");
+                card.classList.remove("hidden");
+                card.classList.remove("fade-in");
+                void card.offsetWidth;
+                card.classList.add("fade-in");
+
+                document.getElementById("ticket-ingreso-placa").textContent = data.placa;
+                document.getElementById("ticket-ingreso-hora").textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                document.getElementById("ticket-ingreso-tipo").textContent = data.es_mensual ? "Mensual 👑" : "Diario 🚗";
+
+                // Llenar ticket para impresión
+                contadorTickets++;
+                document.getElementById("ticket-numero").textContent = String(contadorTickets).padStart(6, '0');
+                document.getElementById("ticket-fecha").textContent = formatoFecha(new Date());
+                document.getElementById("ticket-placa").textContent = data.placa;
+                document.getElementById("ticket-ingreso").textContent = formatoHora(data.hora_ingreso) + " (" + formatoFecha(data.hora_ingreso) + ")";
+                document.getElementById("ticket-salida").textContent = "--";
+                document.getElementById("ticket-horas").textContent = "--";
+                document.getElementById("ticket-cajero").textContent = usuarioActual ? usuarioActual.nombre : "";
+                document.getElementById("ticket-total").textContent = data.es_mensual ? "Mensual" : "Por definir";
+
+                document.getElementById("laser-placa").textContent = data.placa;
+                document.getElementById("laser-fecha").textContent = formatoFecha(new Date());
+                document.getElementById("laser-ingreso").textContent = formatoHora(data.hora_ingreso) + " " + formatoFecha(data.hora_ingreso);
+                document.getElementById("laser-salida").textContent = "--";
+                document.getElementById("laser-tiempo").textContent = "--";
+                document.getElementById("laser-tarifa").textContent = data.es_mensual ? "Mensual" : "Por definir";
+                document.getElementById("laser-cajero").textContent = usuarioActual ? usuarioActual.nombre : "";
+                document.getElementById("laser-total").textContent = data.es_mensual ? "Mensual" : "Por definir";
+
+                document.getElementById("ticket-laser").classList.remove("hidden");
+                setTimeout(() => window.print(), 300);
+
+                cargarParqueados();
+                if(usuarioActual.rol === "Admin" || obtenerPermisos().metricas) cargarEstadisticas();
+            } else {
+                const err = await res.json();
+                alert("Error: " + err.detail);
+            }
+        }
+
+        async function forzarSalida(placa) {
+            const res = await fetch(`${API_URL}/salida/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ placa: placa })
+            });
+
+            if(res.ok) {
+                ultimoCobro = await res.json();
+                const card = document.getElementById("cobro-card");
+                card.classList.remove("hidden");
+                
+                card.classList.remove("fade-in");
+                void card.offsetWidth; 
+                card.classList.add("fade-in");
+
+                document.getElementById("cobro-monto").textContent = ultimoCobro.monto_cobrado
+                    ? formatoMoneda(ultimoCobro.monto_cobrado)
+                    : "Mensual";
+                document.getElementById("cobro-placa").textContent = ultimoCobro.placa;
+                document.getElementById("cobro-horas").textContent = `${ultimoCobro.horas_transcurridas} hora(s)`;
+                document.getElementById("placa-input").value = "";
+                
+                // Preparar impresión del ticket láser/térmico con los datos del vehículo y del parqueadero
+                contadorTickets++;
+                document.getElementById("ticket-direccion").textContent = DATOS_PARQUEADERO.direccion;
+                document.getElementById("ticket-telefono").textContent = DATOS_PARQUEADERO.telefono;
+                document.getElementById("ticket-numero").textContent = String(contadorTickets).padStart(6, '0');
+                document.getElementById("ticket-fecha").textContent = formatoFecha(ultimoCobro.hora_salida || new Date());
+                document.getElementById("ticket-placa").textContent = ultimoCobro.placa;
+                document.getElementById("ticket-ingreso").textContent = formatoHora(ultimoCobro.hora_ingreso) + " (" + formatoFecha(ultimoCobro.hora_ingreso) + ")";
+                document.getElementById("ticket-salida").textContent = formatoHora(ultimoCobro.hora_salida) + " (" + formatoFecha(ultimoCobro.hora_salida) + ")";
+                document.getElementById("ticket-horas").textContent = ultimoCobro.horas_transcurridas;
+                document.getElementById("ticket-cajero").textContent = usuarioActual ? usuarioActual.nombre : "";
+                document.getElementById("ticket-total").textContent = ultimoCobro.monto_cobrado
+                    ? formatoMoneda(ultimoCobro.monto_cobrado)
+                    : "Mensual";
+
+                document.getElementById("laser-placa").textContent = ultimoCobro.placa;
+                document.getElementById("laser-fecha").textContent = formatoFecha(ultimoCobro.hora_salida || new Date());
+                document.getElementById("laser-ingreso").textContent = formatoHora(ultimoCobro.hora_ingreso) + " " + formatoFecha(ultimoCobro.hora_ingreso);
+                document.getElementById("laser-salida").textContent = formatoHora(ultimoCobro.hora_salida) + " " + formatoFecha(ultimoCobro.hora_salida);
+                document.getElementById("laser-tiempo").textContent = `${ultimoCobro.horas_transcurridas} hora(s)`;
+                document.getElementById("laser-tarifa").textContent = ultimoCobro.monto_cobrado ? formatoMoneda(ultimoCobro.monto_cobrado / Math.max(ultimoCobro.horas_transcurridas || 1, 1)) : "Mensual";
+                document.getElementById("laser-cajero").textContent = usuarioActual ? usuarioActual.nombre : "";
+                document.getElementById("laser-total").textContent = ultimoCobro.monto_cobrado ? formatoMoneda(ultimoCobro.monto_cobrado) : "Mensual";
+                document.getElementById("ticket-laser").classList.remove("hidden");
+
+                cargarParqueados();
+                cargarHistorialDiarioInicio();
+                if(usuarioActual.rol === "Admin") {
+                    cargarEstadisticas();
+                    cargarHistorialCompleto();
+                } else {
+                    const permisos = obtenerPermisos();
+                    if (permisos.metricas) cargarEstadisticas();
+                    if (permisos.historial) cargarHistorialCompleto();
+                }
+            } else {
+                const err = await res.json();
+                alert("Error: " + err.detail);
+            }
+        }
+
+        function imprimirTicketUltimo() {
+            document.getElementById("ticket-laser").classList.remove("hidden");
+            window.print();
+        }
+
+        // MENSUALIDADES
+        async function registrarMensualidad(e) {
+            e.preventDefault();
+            const datos = {
+                nombre: document.getElementById("men-nombre").value,
+                telefono: document.getElementById("men-tel").value,
+                placa_vehiculo: document.getElementById("men-placa").value,
+                tipo_vehiculo: document.getElementById("men-tipo").value,
+                valor_mensualidad: Number(document.getElementById("men-valor").value) || 0,
+                fecha_inicio: document.getElementById("men-inicio").value,
+                fecha_fin: document.getElementById("men-fin").value
+            };
+
+            try {
+                let res;
+                if (mensualidadEnEdicion) {
+                    // Modo edición: actualizamos el cliente existente (la placa no cambia)
+                    res = await fetch(`${API_URL}/clientes-mensuales/${mensualidadEnEdicion}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            nombre: datos.nombre,
+                            telefono: datos.telefono,
+                            tipo_vehiculo: datos.tipo_vehiculo,
+                            valor_mensualidad: datos.valor_mensualidad,
+                            fecha_inicio: datos.fecha_inicio,
+                            fecha_fin: datos.fecha_fin
+                        })
+                    });
+                } else {
+                    res = await fetch(`${API_URL}/clientes-mensuales/`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(datos)
+                    });
+                }
+
+                if(res.ok) {
+                    alert(mensualidadEnEdicion
+                        ? `Cliente ${datos.placa_vehiculo} actualizado correctamente.`
+                        : `Cliente ${datos.placa_vehiculo} guardado correctamente.`);
+                    cancelarEdicionMensualidad();
+                    e.target.reset();
+                    cargarClientesMensuales();
+                    if (usuarioActual.rol === "Admin" || obtenerPermisos().metricas) cargarEstadisticas();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.detail);
+                }
+            } catch (err) {
+                alert("Error de conexión: " + err.message);
+            }
+        }
+
+        // Rellena el formulario con los datos de un cliente existente para editarlo
+        function editarClienteMensualPorPlaca(placa) {
+            const cliente = clientesMensualesCache[placa];
+            if (!cliente) return;
+
+            mensualidadEnEdicion = cliente.placa;
+            document.getElementById("men-nombre").value = cliente.nombre;
+            document.getElementById("men-tel").value = cliente.telefono;
+            document.getElementById("men-placa").value = cliente.placa;
+            document.getElementById("men-placa").disabled = true; // la placa identifica al cliente, no se edita
+            document.getElementById("men-tipo").value = cliente.tipo_vehiculo || "Automovil";
+            document.getElementById("men-valor").value = cliente.valor_mensualidad || 0;
+            document.getElementById("men-inicio").value = cliente.fecha_inicio;
+            document.getElementById("men-fin").value = cliente.fecha_fin;
+
+            document.getElementById("btn-guardar-mensual").textContent = "Actualizar Mensualidad";
+            document.getElementById("btn-cancelar-edicion").classList.remove("hidden");
+            document.getElementById("form-mensual").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        function cancelarEdicionMensualidad() {
+            mensualidadEnEdicion = null;
+            document.getElementById("men-placa").disabled = false;
+            document.getElementById("btn-guardar-mensual").textContent = "Guardar Mensualidad";
+            document.getElementById("btn-cancelar-edicion").classList.add("hidden");
+            document.getElementById("form-mensual").reset();
+        }
+
+        // Autocompletar valor de mensualidad según tipo de vehículo y tarifas del cliente
+        let tarifasCliente = {};
+        async function cargarTarifasClienteActual() {
+            try {
+                const res = await fetch(`${API_URL}/mis-tarifas/`);
+                if (res.ok) {
+                    const data = await res.json();
+                    data.forEach(t => { tarifasCliente[t.tipo] = t.valor_mensualidad; });
+                    actualizarValorMensualidad();
+                }
+            } catch (e) {}
+        }
+        function actualizarValorMensualidad() {
+            const tipo = document.getElementById("men-tipo")?.value;
+            const valor = tarifasCliente[tipo] || 0;
+            const inp = document.getElementById("men-valor");
+            if (inp) inp.value = valor;
+        }
+
+        // Borra un cliente mensual (solo Admin ve el botón, pero se valida también aquí)
+        async function eliminarClienteMensual(placa) {
+            if (usuarioActual.rol !== "Admin") return;
+            if (!confirm(`¿Seguro que deseas eliminar la mensualidad de la placa ${placa}? Esta acción no se puede deshacer.`)) return;
+
+            const res = await fetch(`${API_URL}/clientes-mensuales/${placa}`, { method: "DELETE" });
+            if (res.ok) {
+                cargarClientesMensuales();
+                if (usuarioActual.rol === "Admin") cargarEstadisticas();
+            } else {
+                const err = await res.json();
+                alert("Error: " + err.detail);
+            }
+        }
+
+        // Lista los clientes mensuales registrados; solo el Admin ve botones de editar/borrar
+        async function cargarClientesMensuales() {
+            try {
+                const res = await fetch(`${API_URL}/clientes-mensuales/`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const tbody = document.getElementById("tabla-clientes-mensuales");
+                tbody.innerHTML = "";
+                clientesMensualesCache = {};
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-4 text-center text-slate-400">No hay clientes mensuales registrados.</td></tr>`;
+                    return;
+                }
+
+                const esAdmin = usuarioActual && usuarioActual.rol === "Admin";
+
+                data.forEach(c => {
+                    clientesMensualesCache[c.placa] = c;
+
+                    const row = document.createElement("tr");
+                    row.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
+                    row.innerHTML = `
+                        <td class="px-4 py-3 font-mono font-bold text-slate-900">${c.placa}</td>
+                        <td class="px-4 py-3 text-slate-700">${c.nombre}</td>
+                        <td class="px-4 py-3 text-slate-500">${c.telefono}</td>
+                        <td class="px-4 py-3 font-bold text-emerald-600">${formatoMoneda(c.valor_mensualidad || 0)}</td>
+                        <td class="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">${c.fecha_inicio} → ${c.fecha_fin}</td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            ${esAdmin ? `
+                                <button type="button" onclick="editarClienteMensualPorPlaca('${c.placa}')" class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg font-bold transition-all border border-blue-200 active:scale-95 mr-2">Editar</button>
+                                <button type="button" onclick="eliminarClienteMensual('${c.placa}')" class="text-xs bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-2 rounded-lg font-bold transition-all border border-rose-200 active:scale-95">Borrar</button>
+                            ` : `<span class="text-xs text-slate-300">—</span>`}
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (e) {}
+        }
+
+        // ESTADÍSTICAS E HISTORIAL COMPLETO
+        async function cargarEstadisticas() {
+            const res = await fetch(`${API_URL}/estadisticas/`);
+            if(res.ok) {
+                const data = await res.json();
+                document.getElementById("stat-vehiculos-hoy").textContent = data.total_vehiculos_hoy;
+                document.getElementById("stat-recaudo-hoy").textContent = formatoMoneda(data.recaudo_hoy);
+                document.getElementById("stat-vehiculos-hist").textContent = data.total_vehiculos_historico;
+                // El backend ya suma los cobros por hora/día + las mensualidades registradas
+                document.getElementById("stat-recaudo-hist").textContent = formatoMoneda(data.recaudo_historico);
+            }
+        }
+
+        async function cargarHistorialCompleto() {
+            const fecha = document.getElementById("filtro-fecha").value;
+            const tenantId = document.getElementById("filtro-parqueadero").value;
+            let url = `${API_URL}/historial/?fecha=${fecha}`;
+            if (tenantId) url += `&tenant_id=${tenantId}`;
+
+            const res = await fetch(url);
+            if(res.ok) {
+                const data = await res.json();
+                const tbody = document.getElementById("tabla-historial-completo");
+                tbody.innerHTML = "";
+                
+                data.forEach(h => {
+                    const esMensual = h.tipo_cliente === 'Mensual';
+                    const celdaCobro = esMensual
+                        ? `<span class="px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">Mensual</span>`
+                        : formatoMoneda(h.total_pagado || 0);
+
+                    const row = document.createElement("tr");
+                    row.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
+                    row.innerHTML = `
+                        <td class="p-4 font-mono font-bold text-slate-800">${h.placa}</td>
+                        <td class="p-4 text-slate-500 text-xs">${h.hora_ingreso}</td>
+                        <td class="p-4 text-slate-500 text-xs">${h.hora_salida || '<span class="text-blue-500 font-bold">Activo</span>'}</td>
+                        <td class="p-4"><span class="px-2 py-1 rounded text-[10px] uppercase font-bold bg-slate-100 text-slate-600 border border-slate-200">${h.tipo_cliente}</span></td>
+                        <td class="p-4 text-xs text-slate-400">${h.parqueadero_nombre || ''}</td>
+                        <td class="p-4 font-black text-emerald-600 text-right">${celdaCobro}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        async function cargarFiltroParqueaderos() {
+            try {
+                const res = await fetch(`${API_URL}/mis-parqueaderos/`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const select = document.getElementById("filtro-parqueadero");
+                select.innerHTML = '<option value="">Todos</option>';
+                data.forEach(t => {
+                    select.innerHTML += `<option value="${t.id}">${t.nombre}</option>`;
+                });
+            } catch (e) {}
+        }
+
+        async function exportarExcel() {
+            const fecha = document.getElementById("filtro-fecha").value;
+            const tenantId = document.getElementById("filtro-parqueadero").value;
+            let url = `${API_URL}/historial/exportar/?fecha=${fecha}`;
+            if (tenantId) url += `&tenant_id=${tenantId}`;
+
+            try {
+                const res = await fetch(url);
+                if (!res.ok) { alert("Error al exportar"); return; }
+                const blob = await res.blob();
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `historial_${fecha}.xlsx`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+            } catch (e) {
+                alert("Error de conexión: " + e.message);
+            }
+        }
+
+        // ========== GESTIÓN DE PARQUEADEROS (TENANTS) ==========
+        let tenantSeleccionadoId = null;
+
+        async function crearTenant(e) {
+            e.preventDefault();
+            const nombre = document.getElementById("tenant-nombre").value.trim();
+            const slug = document.getElementById("tenant-slug").value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+            if (!nombre || !slug) return;
+
+            try {
+                const res = await fetch(`${API_URL}/tenants/`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ nombre, slug })
+                });
+
+                if (res.ok) {
+                    alert(`Parqueadero "${nombre}" creado correctamente.`);
+                    document.getElementById("form-tenant").reset();
+                    cargarTenants();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.detail);
+                }
+            } catch (err) {
+                alert("Error de conexión: " + err.message);
+            }
+        }
+
+        async function cargarTenants() {
+            try {
+                const res = await fetch(`${API_URL}/tenants/`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const tbody = document.getElementById("tabla-tenants");
+                tbody.innerHTML = "";
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-center text-slate-400">No hay parqueaderos registrados.</td></tr>`;
+                    return;
+                }
+
+                data.forEach(t => {
+                    const row = document.createElement("tr");
+                    row.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
+                    row.innerHTML = `
+                        <td class="px-4 py-3 font-semibold text-slate-900">${t.nombre}</td>
+                        <td class="px-4 py-3 font-mono text-sm text-slate-500">${t.slug}</td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-1 rounded text-xs font-bold ${t.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${t.activo ? 'Activo' : 'Inactivo'}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button type="button" onclick="seleccionarTenant(${t.id}, '${t.nombre}')" class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg font-bold transition-all border border-blue-200 active:scale-95">+ Usuario</button>
+                            <button type="button" onclick="eliminarTenant(${t.id}, '${t.nombre}')" class="text-xs bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-2 rounded-lg font-bold transition-all border border-rose-200 active:scale-95 ml-1">🗑</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (e) {}
+        }
+
+        function seleccionarTenant(id, nombre) {
+            tenantSeleccionadoId = id;
+            document.getElementById("tenant-seleccionado-nombre").textContent = nombre;
+            document.getElementById("seccion-usuario-tenant").classList.remove("hidden");
+            document.getElementById("seccion-usuario-tenant").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        async function crearUsuarioEnTenant(e) {
+            e.preventDefault();
+            if (!tenantSeleccionadoId) {
+                alert("Seleccione un parqueadero primero.");
+                return;
+            }
+
+            const payload = {
+                username: document.getElementById("ut-username").value.trim().toLowerCase(),
+                password: document.getElementById("ut-password").value.trim(),
+                nombre: document.getElementById("ut-nombre").value.trim(),
+                rol: document.getElementById("ut-rol").value,
+                permisos: {}
+            };
+
+            if (!payload.password) {
+                alert("La contraseña es obligatoria.");
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/tenants/${tenantSeleccionadoId}/usuarios/`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    alert(`Usuario "${payload.username}" creado en el parqueadero.`);
+                    document.getElementById("form-usuario-tenant").reset();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.detail);
+                }
+            } catch (err) {
+                alert("Error de conexión: " + err.message);
+            }
+        }
+
+        async function eliminarTenant(id, nombre) {
+            if (!confirm(`¿Eliminar el parqueadero "${nombre}"?\n\nSe perderán todos sus usuarios, clientes y registros. Esta acción NO se puede deshacer.`)) return;
+
+            try {
+                const res = await fetch(`${API_URL}/tenants/${id}`, { method: "DELETE" });
+                if (res.ok) {
+                    alert(`Parqueadero "${nombre}" eliminado.`);
+                    cargarTenants();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.detail);
+                }
+            } catch (err) {
+                alert("Error de conexión: " + err.message);
+            }
+        }
+
+        // ========== GESTIÓN DE CLIENTES (ORGANIZACIONES) ==========
+
+        async function crearCliente(e) {
+            e.preventDefault();
+            const nombre = document.getElementById("cliente-nombre").value.trim();
+            const slug = document.getElementById("cliente-slug").value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+            const adminUsername = document.getElementById("cliente-admin-user").value.trim().toLowerCase();
+            const adminPassword = document.getElementById("cliente-admin-pass").value.trim();
+
+            if (!nombre || !slug || !adminUsername || !adminPassword) return;
+            if (adminPassword.length < 6) {
+                alert("La contraseña debe tener al menos 6 caracteres.");
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/clientes/`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        nombre,
+                        slug,
+                        admin_username: adminUsername,
+                        admin_password: adminPassword,
+                        admin_nombre: "Administrador",
+                        parqueadero_nombre: nombre
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    alert(`✅ Cliente "${nombre}" creado.\n\n🔑 Login: ${data.admin_username}@${data.tenant_slug}\n🔒 Contraseña: ${adminPassword}\n\nGuarda estos datos para entregárselos al cliente.`);
+                    document.getElementById("form-cliente").reset();
+                    cargarClientes();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.detail);
+                }
+            } catch (err) {
+                alert("Error de conexión: " + err.message);
+            }
+        }
+
+        async function cargarClientes() {
+            try {
+                const res = await fetch(`${API_URL}/clientes/`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const tbody = document.getElementById("tabla-clientes");
+                tbody.innerHTML = "";
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-center text-slate-400">No hay clientes registrados.</td></tr>`;
+                    return;
+                }
+
+                data.forEach(c => {
+                    if (c.id === 1) return;
+
+                    // Contar funciones activas
+                    const feats = c.features ? (typeof c.features === 'string' ? JSON.parse(c.features) : c.features) : {};
+                    const activas = Object.values(feats).filter(v => v === true).length;
+
+                    const row = document.createElement("tr");
+                    row.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
+                    row.innerHTML = `
+                        <td class="px-4 py-3 font-semibold text-slate-900">${c.nombre}</td>
+                        <td class="px-4 py-3 font-mono text-sm text-slate-500">${c.slug}</td>
+                        <td class="px-4 py-3">
+                            <button type="button" onclick="abrirFeatures(${c.id}, '${c.nombre}', '${encodeURIComponent(JSON.stringify(feats))}')" class="text-xs bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white px-3 py-2 rounded-lg font-bold transition-all border border-purple-200 active:scale-95">
+                                ⚙️ ${activas} activas
+                            </button>
+                        </td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button type="button" onclick="abrirEditarCliente(${c.id}, '${c.nombre}', '${c.slug}')" class="text-xs bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white px-3 py-2 rounded-lg font-bold transition-all border border-amber-200 active:scale-95 mr-1">✏️</button>
+                            <button type="button" onclick="abrirTarifas(${c.id}, '${c.nombre}')" class="text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white px-3 py-2 rounded-lg font-bold transition-all border border-emerald-200 active:scale-95 mr-1">💰</button>
+                            <button type="button" onclick="eliminarCliente(${c.id}, '${c.nombre}')" class="text-xs bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-2 rounded-lg font-bold transition-all border border-rose-200 active:scale-95">🗑</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (e) {}
+        }
+
+        let featureClienteId = null;
+        const FUNCIONES_DISPONIBLES = {
+            lpr: "Cámara LPR (detección automática de placas)",
+            reportes_avanzados: "Reportes avanzados y estadísticas",
+            exportar_excel: "Exportar historial a Excel",
+            mensualidades: "Gestión de clientes mensuales",
+            multi_parqueadero: "Múltiples parqueaderos",
+            notificaciones: "Notificaciones por email",
+            personalizacion: "Logo y colores personalizados"
+        };
+
+        function abrirFeatures(id, nombre, featsEncoded) {
+            featureClienteId = id;
+            document.getElementById("feature-cliente-nombre").textContent = nombre;
+            const feats = JSON.parse(decodeURIComponent(featsEncoded));
+            const container = document.getElementById("feature-checkboxes");
+            container.innerHTML = "";
+            for (const [key, label] of Object.entries(FUNCIONES_DISPONIBLES)) {
+                const checked = feats[key] === true ? "checked" : "";
+                container.innerHTML += `
+                    <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                        <span class="text-sm text-slate-700">${label}</span>
+                        <input type="checkbox" class="feature-cb w-5 h-5 accent-purple-600" data-key="${key}" ${checked}>
+                    </label>
+                `;
+            }
+            document.getElementById("modal-features").classList.remove("hidden");
+        }
+
+        async function guardarFeatures() {
+            const feats = {};
+            document.querySelectorAll(".feature-cb").forEach(cb => {
+                feats[cb.dataset.key] = cb.checked;
+            });
+            try {
+                const res = await fetch(`${API_URL}/clientes/${featureClienteId}/features`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ features: feats })
+                });
+                if (res.ok) {
+                    alert("Funciones actualizadas.");
+                    document.getElementById("modal-features").classList.add("hidden");
+                    cargarClientes();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.detail);
+                }
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        }
+
+        async function eliminarCliente(id, nombre) {
+            if (!confirm(`¿Desactivar a "${nombre}"?\n\nSus parqueaderos se desactivarán pero TODOS los registros históricos se conservarán.\n\nEl cliente no podrá acceder hasta que lo reactives.`)) return;
+
+            try {
+                const res = await fetch(`${API_URL}/clientes/${id}`, { method: "DELETE" });
+                if (res.ok) {
+                    alert(`Cliente "${nombre}" eliminado.`);
+                    cargarClientes();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.detail);
+                }
+            } catch (err) {
+                alert("Error de conexión: " + err.message);
+            }
+        }
+
+        // ========== GESTIÓN DE TARIFAS POR CLIENTE ==========
+        let tarifaClienteId = null;
+
+        async function abrirTarifas(id, nombre) {
+            tarifaClienteId = id;
+            document.getElementById("tarifa-cliente-nombre").textContent = nombre;
+            try {
+                const res = await fetch(`${API_URL}/admin/tarifas/${id}`);
+                if (!res.ok) return;
+                const tarifas = await res.json();
+                const container = document.getElementById("tarifa-inputs");
+                container.innerHTML = "";
+                const iconos = { "Moto": "🏍️", "Automovil": "🚗", "Camioneta": "🚙", "Camion": "🚛" };
+                tarifas.forEach(t => {
+                    container.innerHTML += `
+                        <div class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
+                            <span class="text-xl">${iconos[t.tipo] || "🅿️"}</span>
+                            <span class="flex-1 font-semibold text-slate-700">${t.tipo}</span>
+                            <div class="text-right">
+                                <label class="text-[10px] text-slate-400">Hora</label>
+                                <input type="number" class="tarifa-hora w-24 text-sm border rounded px-2 py-1 text-center" data-id="${t.id}" value="${t.valor_hora}">
+                            </div>
+                            <div class="text-right">
+                                <label class="text-[10px] text-slate-400">Mensualidad</label>
+                                <input type="number" class="tarifa-mensual w-28 text-sm border rounded px-2 py-1 text-center" data-id="${t.id}" value="${t.valor_mensualidad}">
+                            </div>
+                        </div>
+                    `;
+                });
+                document.getElementById("modal-tarifas").classList.remove("hidden");
+            } catch (e) {}
+        }
+
+        async function guardarTarifas() {
+            const tarifas = [];
+            document.querySelectorAll(".tarifa-hora").forEach(inp => {
+                const id = inp.dataset.id;
+                const mensual = document.querySelector(`.tarifa-mensual[data-id="${id}"]`);
+                tarifas.push({
+                    id: parseInt(id),
+                    valor_hora: parseFloat(inp.value) || 0,
+                    valor_mensualidad: parseFloat(mensual?.value) || 0
+                });
+            });
+            try {
+                const res = await fetch(`${API_URL}/admin/tarifas/${tarifaClienteId}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ tarifas })
+                });
+                if (res.ok) {
+                    alert("Tarifas actualizadas.");
+                    document.getElementById("modal-tarifas").classList.add("hidden");
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.detail);
+                }
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        }
+
+        // ========== EDITAR CLIENTE (Superadmin) ==========
+        let editarClienteId = null;
+
+        function abrirEditarCliente(id, nombre, slug) {
+            editarClienteId = id;
+            document.getElementById("edit-cliente-nombre").value = nombre;
+            document.getElementById("edit-cliente-slug").value = slug;
+            document.getElementById("modal-editar-cliente").classList.remove("hidden");
+        }
+
+        async function guardarEdicionCliente() {
+            const nombre = document.getElementById("edit-cliente-nombre").value.trim();
+            const slug = document.getElementById("edit-cliente-slug").value.trim();
+            if (!nombre) { alert("El nombre es obligatorio."); return; }
+
+            try {
+                const res = await fetch(`${API_URL}/clientes/${editarClienteId}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ nombre, slug: slug || undefined })
+                });
+                if (res.ok) {
+                    alert("Cliente actualizado.");
+                    document.getElementById("modal-editar-cliente").classList.add("hidden");
+                    cargarClientes();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.detail);
+                }
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        }
+
+        // ========== MI PERFIL Y ORGANIZACIÓN (Admin del tenant) ==========
+        async function cargarMiCliente() {
+            // Solo para admins de tenant (no superadmin)
+            if (!usuarioActual || usuarioActual.cliente_id === 1) {
+                document.getElementById("seccion-mi-cliente").classList.add("hidden");
+                return;
+            }
+            try {
+                // Cargar datos del cliente
+                const res = await fetch(`${API_URL}/mi-cliente/`);
+                if (!res.ok) return;
+                const cliente = await res.json();
+                document.getElementById("mi-cliente-nombre").value = cliente.nombre || "";
+                document.getElementById("mi-cliente-slug").value = cliente.slug || "";
+
+                // Cargar datos del perfil del usuario actual
+                document.getElementById("mi-perfil-nombre").value = usuarioActual.nombre || "";
+                document.getElementById("mi-perfil-username").value = usuarioActual.username || "";
+                document.getElementById("mi-perfil-password").value = "";  // siempre vacío
+
+                document.getElementById("seccion-mi-cliente").classList.remove("hidden");
+            } catch (e) {
+                document.getElementById("seccion-mi-cliente").classList.add("hidden");
+            }
+        }
+
+        async function guardarMiPerfil() {
+            const nombre = document.getElementById("mi-perfil-nombre").value.trim();
+            const username = document.getElementById("mi-perfil-username").value.trim();
+            const password = document.getElementById("mi-perfil-password").value;
+            const clienteNombre = document.getElementById("mi-cliente-nombre").value.trim();
+            const clienteSlug = document.getElementById("mi-cliente-slug").value.trim();
+
+            if (!nombre) { alert("Tu nombre es obligatorio."); return; }
+            if (!clienteNombre) { alert("El nombre de la organización es obligatorio."); return; }
+
+            const body = {
+                nombre: nombre || undefined,
+                username: username || undefined,
+                password: password || undefined,
+                cliente_nombre: clienteNombre || undefined,
+                cliente_slug: clienteSlug || undefined,
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/mi-perfil/`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    // Actualizar datos en memoria para que se reflejen en la UI
+                    if (data.username) usuarioActual.username = data.username;
+                    if (nombre) usuarioActual.nombre = nombre;
+                    // Refrescar el header
+                    document.querySelector("header h1 + p") && (
+                        document.querySelector("header h1 + p").textContent =
+                            `${usuarioActual.rol} - ${usuarioActual.nombre} | 🏢`
+                    );
+                    alert("✅ Perfil y organización actualizados correctamente.");
+                    // Recargar para reflejar todos los cambios
+                    cargarMiCliente();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.detail);
+                }
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        }
+
+        // ========== CONVERTIR A MENSUAL ==========
+        function abrirConvertirMensual(placa) {
+            document.getElementById("conv-placa").value = placa;
+            document.getElementById("conv-nombre").value = "";
+            document.getElementById("conv-telefono").value = "";
+            document.getElementById("conv-valor").value = tarifasCliente["Automovil"] || 0;
+            const hoy = obtenerFechaHoy();
+            document.getElementById("conv-inicio").value = hoy;
+            // Fin por defecto: 30 días
+            const fin = new Date();
+            fin.setDate(fin.getDate() + 30);
+            document.getElementById("conv-fin").value = fin.toISOString().split('T')[0];
+            document.getElementById("modal-convertir-mensual").classList.remove("hidden");
+        }
+
+        async function convertirAMensual() {
+            const placa = document.getElementById("conv-placa").value;
+            const nombre = document.getElementById("conv-nombre").value.trim();
+            const telefono = document.getElementById("conv-telefono").value.trim();
+            const tipo = document.getElementById("conv-tipo").value;
+            const valor = parseFloat(document.getElementById("conv-valor").value) || 0;
+            const inicio = document.getElementById("conv-inicio").value;
+            const fin = document.getElementById("conv-fin").value;
+
+            if (!nombre) { alert("El nombre es obligatorio."); return; }
+            if (!inicio || !fin) { alert("Fechas obligatorias."); return; }
+
+            try {
+                const res = await fetch(`${API_URL}/convertir-mensual/`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ placa, nombre, telefono, tipo_vehiculo: tipo, valor_mensualidad: valor, fecha_inicio: inicio, fecha_fin: fin })
+                });
+                if (res.ok) {
+                    alert("✅ Vehículo convertido a cliente mensual.");
+                    document.getElementById("modal-convertir-mensual").classList.add("hidden");
+                    cargarParqueados();
+                    cargarClientesMensuales();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.detail);
+                }
+            } catch (err) { alert("Error: " + err.message); }
+        }
+
+        // ========== TICKET DE INGRESO ==========
+        function imprimirTicketIngreso() {
+            document.getElementById("ticket-laser").classList.remove("hidden");
+            window.print();
+        }
+
+        // Impresión automática cuando el LPR detecta un nuevo ingreso
+        function imprimirTicketIngresoLPR(placa) {
+            contadorTickets++;
+            const ahora = new Date();
+            document.getElementById("ticket-numero").textContent = String(contadorTickets).padStart(6, '0');
+            document.getElementById("ticket-fecha").textContent = formatoFecha(ahora);
+            document.getElementById("ticket-placa").textContent = placa;
+            document.getElementById("ticket-ingreso").textContent = formatoHora(ahora.toISOString()) + " (" + formatoFecha(ahora) + ")";
+            document.getElementById("ticket-salida").textContent = "--";
+            document.getElementById("ticket-horas").textContent = "--";
+            document.getElementById("ticket-cajero").textContent = "LPR Automático";
+            document.getElementById("ticket-total").textContent = "Por definir";
+
+            document.getElementById("laser-placa").textContent = placa;
+            document.getElementById("laser-fecha").textContent = formatoFecha(ahora);
+            document.getElementById("laser-ingreso").textContent = formatoHora(ahora.toISOString()) + " " + formatoFecha(ahora);
+            document.getElementById("laser-salida").textContent = "--";
+            document.getElementById("laser-tiempo").textContent = "--";
+            document.getElementById("laser-tarifa").textContent = "Por definir";
+            document.getElementById("laser-cajero").textContent = "LPR Automático";
+            document.getElementById("laser-total").textContent = "Por definir";
+
+            document.getElementById("ticket-laser").classList.remove("hidden");
+            setTimeout(() => window.print(), 500);
+        }
+
+        // ========== TARIFAS DEL TENANT ==========
+        async function cargarTarifasTenant() {
+            try {
+                const clienteId = usuarioActual?.cliente_id;
+                if (!clienteId) return;
+                const res = await fetch(`${API_URL}/admin/tarifas/${clienteId}`);
+                if (!res.ok) return;
+                const tarifas = await res.json();
+                const container = document.getElementById("tarifas-tenant-inputs");
+                container.innerHTML = "";
+                const iconos = { "Moto": "🏍️", "Automovil": "🚗", "Camioneta": "🚙", "Camion": "🚛" };
+                tarifas.forEach(t => {
+                    container.innerHTML += `
+                        <div class="flex items-center gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
+                            <span class="text-2xl">${iconos[t.tipo] || "🅿️"}</span>
+                            <span class="flex-1 font-semibold text-surface-700">${t.tipo}</span>
+                            <div class="text-right">
+                                <label class="text-[10px] text-surface-400 font-semibold uppercase tracking-wide">Valor Hora</label>
+                                <input type="number" class="tarifa-tenant-hora input-field w-28 text-center" data-id="${t.id}" value="${t.valor_hora}" style="padding:8px;">
+                            </div>
+                            <div class="text-right">
+                                <label class="text-[10px] text-surface-400 font-semibold uppercase tracking-wide">Mensualidad</label>
+                                <input type="number" class="tarifa-tenant-mensual input-field w-32 text-center" data-id="${t.id}" value="${t.valor_mensualidad}" style="padding:8px;">
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (e) {}
+        }
+
+        async function guardarTarifasTenant() {
+            const tarifas = [];
+            document.querySelectorAll(".tarifa-tenant-hora").forEach(inp => {
+                const id = inp.dataset.id;
+                const mensual = document.querySelector(`.tarifa-tenant-mensual[data-id="${id}"]`);
+                tarifas.push({
+                    id: parseInt(id),
+                    valor_hora: parseFloat(inp.value) || 0,
+                    valor_mensualidad: parseFloat(mensual?.value) || 0
+                });
+            });
+            const clienteId = usuarioActual?.cliente_id;
+            if (!clienteId) return;
+            try {
+                const res = await fetch(`${API_URL}/admin/tarifas/${clienteId}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ tarifas })
+                });
+                if (res.ok) {
+                    alert("✅ Tarifas actualizadas correctamente.");
+                    // Refrescar caché de tarifas
+                    cargarTarifasClienteActual();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + err.detail);
+                }
+            } catch (err) { alert("Error: " + err.message); }
+        }
+
+        // ========== CONTABILIDAD ==========
+        async function cargarContabilidad() {
+            try {
+                const res = await fetch(`${API_URL}/contabilidad/`);
+                if (res.ok) {
+                    const d = await res.json();
+                    document.getElementById("cont-ingresos-parq").textContent = formatoMoneda(d.ingresos_parqueadero);
+                    document.getElementById("cont-ingresos-mens").textContent = formatoMoneda(d.ingresos_mensualidades);
+                    document.getElementById("cont-gastos").textContent = formatoMoneda(d.gastos);
+                    const balanceEl = document.getElementById("cont-balance");
+                    balanceEl.textContent = formatoMoneda(d.balance);
+                    balanceEl.className = "text-xl font-black " + (d.balance >= 0 ? "text-emerald-700" : "text-rose-700");
+                }
+                cargarGastos();
+            } catch (e) {}
+        }
+
+        async function cargarGastos() {
+            try {
+                const res = await fetch(`${API_URL}/gastos/`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const tbody = document.getElementById("tabla-gastos");
+                tbody.innerHTML = "";
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-4 text-center text-slate-400">No hay gastos registrados.</td></tr>`;
+                    return;
+                }
+                data.forEach(g => {
+                    const row = document.createElement("tr");
+                    row.className = "hover:bg-slate-50 border-b border-slate-100";
+                    row.innerHTML = `
+                        <td class="px-4 py-3 text-xs text-slate-500">${g.fecha?.split(' ')[0] || ''}</td>
+                        <td class="px-4 py-3 text-slate-700">${g.descripcion}</td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs bg-slate-100 text-slate-600">${g.categoria}</span></td>
+                        <td class="px-4 py-3 text-right font-bold text-rose-600">${formatoMoneda(g.monto)}</td>
+                        <td class="px-4 py-3 text-right">
+                            <button onclick="eliminarGasto(${g.id})" class="text-xs bg-rose-50 text-rose-600 px-2 py-1 rounded font-bold">🗑</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (e) {}
+        }
+
+        async function registrarGasto() {
+            const desc = document.getElementById("gasto-desc").value.trim();
+            const monto = parseFloat(document.getElementById("gasto-monto").value) || 0;
+            const cat = document.getElementById("gasto-cat").value;
+            if (!desc || monto <= 0) { alert("Descripción y monto obligatorios."); return; }
+            try {
+                const res = await fetch(`${API_URL}/gastos/`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ descripcion: desc, monto, categoria: cat })
+                });
+                if (res.ok) {
+                    document.getElementById("gasto-desc").value = "";
+                    document.getElementById("gasto-monto").value = "";
+                    cargarContabilidad();
+                }
+            } catch (e) {}
+        }
+
+        async function eliminarGasto(id) {
+            if (!confirm("¿Eliminar este gasto?")) return;
+            await fetch(`${API_URL}/gastos/${id}`, { method: "DELETE" });
+            cargarContabilidad();
+        }
+
+        // ========== MENÚ MÓVIL ==========
+        function toggleMobileMenu() {
+            const menu = document.getElementById("mobile-menu");
+            const iconOpen = document.getElementById("menu-icon-open");
+            const iconClose = document.getElementById("menu-icon-close");
+            if (menu.classList.contains("hidden")) {
+                menu.classList.remove("hidden");
+                iconOpen.classList.add("hidden");
+                iconClose.classList.remove("hidden");
+            } else {
+                menu.classList.add("hidden");
+                iconOpen.classList.remove("hidden");
+                iconClose.classList.add("hidden");
+            }
+        }
+
+        // Actualizar active state en menú móvil
+        function actualizarMenuMovil(idVista) {
+            document.querySelectorAll('#mobile-menu a').forEach(link => {
+                link.classList.remove('bg-brand-50', 'text-brand-700');
+                link.classList.add('text-surface-600');
+            });
+            const activeLink = document.getElementById("tab-" + idVista + "-mob");
+            if (activeLink) {
+                activeLink.classList.add('bg-brand-50', 'text-brand-700');
+                activeLink.classList.remove('text-surface-600');
+            }
+        }
+    </script>
+</body>
+</html>

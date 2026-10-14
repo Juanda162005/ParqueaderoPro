@@ -1,0 +1,32 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
+      ENVIRONMENT: development
+      HTTPS: "0"
+      DB_FILE: /app/data/parqueadero.db
+      DATABASE_URL: ${DATABASE_URL:-}
+      CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+      ENABLE_DOCS: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      - parqueadero_local_data:/app/data
+    restart: unless-stopped
+
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  parqueadero_local_data:
