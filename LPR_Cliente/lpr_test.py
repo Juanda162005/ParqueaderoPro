@@ -85,7 +85,12 @@ def autenticar_backend():
                 sesion_backend.headers["Authorization"] = f"Bearer {token}"
             print(f"✅ LPR conectado → {datos.get('tenant_nombre', 'Desconocido')} (usuario: {datos.get('username')})")
             return True
-        print(f"⚠️ No se pudo autenticar el backend LPR: {respuesta.status_code}")
+        if respuesta.status_code == 401:
+            print("❌ Credenciales LPR rechazadas (401). Verifica el usuario y la contraseña del administrador en Render.")
+        elif respuesta.status_code >= 500:
+            print(f"⚠️ Backend no disponible temporalmente ({respuesta.status_code}).")
+        else:
+            print(f"⚠️ No se pudo autenticar el backend LPR: {respuesta.status_code}")
         return False
     except Exception as e:
         print(f"❌ Error autenticando el backend LPR: {e}")
@@ -389,6 +394,17 @@ def abrir_camara(url: str):
     captura.set(cv2.CAP_PROP_BUFFERSIZE, 1)
     return captura
 
+
+def leer_frame_inicial(captura, intentos: int = 8):
+    """Da tiempo a MSMF/DirectShow para entregar el primer frame."""
+    for intento in range(intentos):
+        ret, frame = captura.read()
+        if ret and frame is not None and frame.size:
+            return True, frame
+        if intento < intentos - 1:
+            time.sleep(0.25)
+    return False, None
+
 def registrar_en_backend(placa, accion):
     try:
         url = f"{URL_BACKEND}/ingreso/" if accion == "ingreso" else f"{URL_BACKEND}/salida/"
@@ -481,7 +497,9 @@ def tarea_ia_en_segundo_plano(frame_capturado):
 
 def iniciar_sistema():
     global procesando_ia, ultimo_tiempo_procesamiento
-    autenticar_backend()
+    if not autenticar_backend():
+        print("🛑 LPR detenido: no se iniciará la cámara sin autenticación válida.")
+        return
 
     # ── CONFIGURACIÓN DE CÁMARA ──
     # CAMERA_URL puede ser:
@@ -523,11 +541,11 @@ def iniciar_sistema():
     print("SISTEMA LPR AUTOMÁTICO INICIADO")
     print("="*50)
 
-    ret, prev_frame = cap.read()
+    ret, prev_frame = leer_frame_inicial(cap)
     if not ret:
         print("⚠️ No se pudo leer el primer frame. Reintentando en 3s...")
         time.sleep(3)
-        ret, prev_frame = cap.read()
+        ret, prev_frame = leer_frame_inicial(cap)
         if not ret:
             return print("❌ Error: No se pudo obtener video de la cámara.")
 
