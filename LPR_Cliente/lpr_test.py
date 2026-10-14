@@ -65,6 +65,7 @@ _CONFUSIONES_NUMERO = str.maketrans({
 LPR_USERNAME = os.getenv("LPR_USERNAME", "admin")
 LPR_PASSWORD = os.getenv("LPR_PASSWORD", "admin123")
 CAMERA_ROLE = os.getenv("CAMERA_ROLE", "auto").strip().lower()
+LPR_DEBUG = os.getenv("LPR_DEBUG", "0").strip().lower() in {"1", "true", "si", "sí"}
 if CAMERA_ROLE not in {"entrada", "salida", "auto"}:
     raise ValueError("CAMERA_ROLE debe ser entrada, salida o auto")
 # Si quieres que el LPR registre en un tenant específico, usa: LPR_USERNAME=admin@parqueadero-norte
@@ -197,8 +198,8 @@ def preprocesar_para_ocr(frame):
     inicio_x, fin_x = int(ancho * 0.05), int(ancho * 0.95)
     recorte = frame[inicio_y:fin_y, inicio_x:fin_x]
 
-    # Reducir a la mitad para velocidad
-    recorte = cv2.resize(recorte, None, fx=0.6, fy=0.6, interpolation=cv2.INTER_AREA)
+    if recorte is None or recorte.size == 0:
+        return ()
 
     gris = cv2.cvtColor(recorte, cv2.COLOR_BGR2GRAY)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)).apply(gris)
@@ -209,8 +210,8 @@ def preprocesar_para_ocr(frame):
         cv2.THRESH_BINARY, 31, 7,
     )
     return tuple(
-        cv2.resize(imagen, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC)
-        for imagen in (otsu, adaptativo)
+        cv2.resize(imagen, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+        for imagen in (gris, otsu, adaptativo)
     )
 
 
@@ -265,6 +266,8 @@ def procesar_imagen_silencioso(frame):
                 print(f"⚠️ EasyOCR descartó una región inválida: {error}")
                 continue
             for _, texto, confianza in resultados:
+                if LPR_DEBUG:
+                    print(f"🔎 OCR: {texto!r} ({confianza:.0%})")
                 if confianza < 0.20:
                     continue
                 placa = extraer_placa_colombiana(limpiar_texto_ocr(texto))
@@ -376,6 +379,7 @@ def registrar_en_backend(placa, accion):
         datos = respuesta.json() if respuesta.content else {}
 
         if respuesta.status_code == 200:
+            print(f"📡 Backend confirmó {accion.upper()} para {placa}")
             if accion == "ingreso":
                 print(f"✅ INGRESO REGISTRADO: {datos.get('placa')} - Cliente: {datos.get('tipo_cliente', 'General')}")
             else:

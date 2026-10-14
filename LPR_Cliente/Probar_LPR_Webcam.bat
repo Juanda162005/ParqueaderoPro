@@ -7,6 +7,7 @@ set "CAMERA_ROLE=entrada"
 set "CAMERA_URL=0"
 set "BACKEND_URL=https://parqueaderopro-api.onrender.com"
 set "LPR_USERNAME=admin"
+set "LPR_DEBUG=1"
 
 echo.
 echo ParqueaderoPRO - prueba con webcam USB
