@@ -64,6 +64,7 @@ _CONFUSIONES_NUMERO = str.maketrans({
 # Configuración de autenticación LPR (usar variables de entorno o defaults)
 LPR_USERNAME = os.getenv("LPR_USERNAME", "admin")
 LPR_PASSWORD = os.getenv("LPR_PASSWORD", "admin123")
+CODIGO_AUTENTICACION_FALLIDA = 2
 CAMERA_ROLE = os.getenv("CAMERA_ROLE", "auto").strip().lower()
 LPR_DEBUG = os.getenv("LPR_DEBUG", "0").strip().lower() in {"1", "true", "si", "sí"}
 if CAMERA_ROLE not in {"entrada", "salida", "auto"}:
@@ -499,7 +500,7 @@ def iniciar_sistema():
     global procesando_ia, ultimo_tiempo_procesamiento
     if not autenticar_backend():
         print("🛑 LPR detenido: no se iniciará la cámara sin autenticación válida.")
-        return
+        return CODIGO_AUTENTICACION_FALLIDA
 
     # ── CONFIGURACIÓN DE CÁMARA ──
     # CAMERA_URL puede ser:
@@ -531,11 +532,12 @@ def iniciar_sistema():
             print("   Probando índice 1...")
             cap = abrir_camara("1")
             if not cap.isOpened():
-                return print("❌ Error: No se encontró ninguna cámara. Conecta una cámara e inténtalo de nuevo.")
+                print("❌ Error: No se encontró ninguna cámara. Conecta una cámara e inténtalo de nuevo.")
+                return 1
         else:
             print("   Verifica que la URL RTSP/HTTP sea correcta y la cámara esté encendida.")
             print("   Ejemplo: CAMERA_URL=rtsp://admin:12345@192.168.1.100:554/stream")
-            return
+            return 1
 
     print("\n" + "="*50)
     print("SISTEMA LPR AUTOMÁTICO INICIADO")
@@ -547,7 +549,8 @@ def iniciar_sistema():
         time.sleep(3)
         ret, prev_frame = leer_frame_inicial(cap)
         if not ret:
-            return print("❌ Error: No se pudo obtener video de la cámara.")
+            print("❌ Error: No se pudo obtener video de la cámara.")
+            return 1
 
     prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
     prev_gray = cv2.GaussianBlur(prev_gray, (9, 9), 0)
@@ -622,6 +625,9 @@ def ejecutar_con_watchdog():
             env={**os.environ, "LPR_CHILD": "1"},
         )
         proceso.wait()
+        if proceso.returncode == CODIGO_AUTENTICACION_FALLIDA:
+            print("🛑 LPR detenido por credenciales inválidas. Corrige LPR_PASSWORD y vuelve a ejecutar el lanzador.")
+            return
         print(f"⚠️  LPR detenido (codigo {proceso.returncode}). Reiniciando en 3 segundos...")
         time.sleep(3)
 
@@ -629,7 +635,8 @@ def ejecutar_con_watchdog():
 if __name__ == "__main__":
     if os.getenv("LPR_CHILD") == "1":
         # Soy el proceso hijo: ejecutar LPR normalmente
-        iniciar_sistema()
+        codigo_salida = iniciar_sistema()
+        raise SystemExit(codigo_salida or 0)
     else:
         # Soy el padre: ejecutar con watchdog
         ejecutar_con_watchdog()
