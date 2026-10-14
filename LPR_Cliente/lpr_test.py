@@ -339,7 +339,18 @@ def construir_url_camara(url: str, usuario: str = "", contrasena: str = "") -> s
 
 def abrir_camara(url: str):
     """Abre USB o IP con poco buffer para reducir el retraso del video."""
-    captura = cv2.VideoCapture(int(url) if url.isdigit() else url, cv2.CAP_FFMPEG)
+    if url.isdigit():
+        indice = int(url)
+        # DirectShow suele ser más compatible con webcams USB en Windows.
+        for backend in (cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY):
+            captura = cv2.VideoCapture(indice, backend)
+            if captura.isOpened():
+                captura.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                return captura
+            captura.release()
+        return cv2.VideoCapture()
+
+    captura = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
     captura.set(cv2.CAP_PROP_BUFFERSIZE, 1)
     return captura
 
