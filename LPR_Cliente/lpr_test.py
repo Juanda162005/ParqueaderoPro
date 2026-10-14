@@ -72,6 +72,8 @@ ROI_Y1 = float(os.getenv("LPR_ROI_Y1", "0.08"))
 ROI_X2 = float(os.getenv("LPR_ROI_X2", "0.92"))
 ROI_Y2 = float(os.getenv("LPR_ROI_Y2", "0.92"))
 OCR_MIN_CONFIDENCE = float(os.getenv("LPR_OCR_MIN_CONFIDENCE", "0.30"))
+CAMERA_WIDTH = int(os.getenv("LPR_CAMERA_WIDTH", "1280"))
+CAMERA_HEIGHT = int(os.getenv("LPR_CAMERA_HEIGHT", "720"))
 if CAMERA_ROLE not in {"entrada", "salida", "auto"}:
     raise ValueError("CAMERA_ROLE debe ser entrada, salida o auto")
 # Si quieres que el LPR registre en un tenant específico, usa: LPR_USERNAME=admin@parqueadero-norte
@@ -275,6 +277,7 @@ def preprocesar_para_ocr(frame):
         nitido, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY, 31, 7,
     )
+    invertido = cv2.bitwise_not(adaptativo)
     negro = cv2.morphologyEx(
         suavizado,
         cv2.MORPH_BLACKHAT,
@@ -286,6 +289,7 @@ def preprocesar_para_ocr(frame):
         cv2.resize(nitido, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC),
         cv2.resize(otsu, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC),
         cv2.resize(adaptativo, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC),
+        cv2.resize(invertido, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC),
         cv2.resize(negro, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC),
     )
 
@@ -336,10 +340,16 @@ def procesar_imagen_silencioso(frame):
                     low_text=0.15,
                     link_threshold=0.15,
                     paragraph=False,
+                    decoder="beamsearch",
+                    beamWidth=5,
                     mag_ratio=1.0,
                     width_ths=0.7,
                     height_ths=0.7,
                     add_margin=0.08,
+                    min_size=8,
+                    contrast_ths=0.10,
+                    adjust_contrast=0.70,
+                    rotation_info=[-10, 10],
                 )
             except cv2.error as error:
                 print(f"⚠️ EasyOCR descartó una región inválida: {error}")
@@ -439,6 +449,9 @@ def abrir_camara(url: str):
         for backend in (cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY):
             captura = cv2.VideoCapture(indice, backend)
             if captura.isOpened():
+                captura.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+                captura.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
+                captura.set(cv2.CAP_PROP_FPS, 15)
                 captura.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                 return captura
             captura.release()
