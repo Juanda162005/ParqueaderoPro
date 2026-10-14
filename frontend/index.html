@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ParqueaderoPRO</title>
     <meta name="theme-color" content="#1a1a2e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="ParqueaderoPRO">
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -127,6 +131,12 @@
                     Ingresar al sistema
                 </button>
             </form>
+            <button id="btn-instalar-app" type="button" class="hidden w-full mt-3 btn-ghost text-sm">
+                Instalar ParqueaderoPRO
+            </button>
+            <p id="mensaje-instalar-app" class="hidden text-center text-xs text-surface-400 mt-2">
+                Usa el menú del navegador y selecciona “Instalar aplicación”.
+            </p>
         </div>
     </div>
 
@@ -1231,6 +1241,28 @@
                 alert("Error: " + err.detail);
             }
         }
+
+        let eventoInstalacion = null;
+
+        window.addEventListener("beforeinstallprompt", (evento) => {
+            evento.preventDefault();
+            eventoInstalacion = evento;
+            const boton = document.getElementById("btn-instalar-app");
+            if (boton) boton.classList.remove("hidden");
+        });
+
+        window.addEventListener("appinstalled", () => {
+            eventoInstalacion = null;
+            const boton = document.getElementById("btn-instalar-app");
+            if (boton) boton.classList.add("hidden");
+        });
+
+        document.addEventListener("click", async (evento) => {
+            if (evento.target?.id !== "btn-instalar-app" || !eventoInstalacion) return;
+            eventoInstalacion.prompt();
+            await eventoInstalacion.userChoice;
+            eventoInstalacion = null;
+        });
 
         // INICIALIZACIÓN Y PERSISTENCIA DE SESIÓN
         document.addEventListener("DOMContentLoaded", () => {

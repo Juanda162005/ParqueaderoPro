@@ -38,6 +38,19 @@ como URL pública para los usuarios y en `CORS_ORIGINS` de Render. Las URLs
 que terminan en `-git-...vercel.app` o contienen un identificador de deploy
 son temporales y no deben configurarse como dominio principal.
 
+### Instalar como aplicación
+
+El frontend es una PWA y puede instalarse como una aplicación de escritorio o
+móvil. Abre el dominio estable de producción usando HTTPS y:
+
+- Chrome o Edge: selecciona el icono de instalación en la barra de direcciones
+  o pulsa **Instalar ParqueaderoPRO** en la pantalla de login.
+- Android: abre el menú del navegador y selecciona **Instalar aplicación**.
+- iPhone/iPad: usa **Compartir → Añadir a pantalla de inicio** en Safari.
+
+La instalación requiere usar la URL HTTPS estable de Vercel; no funciona desde
+una URL temporal de vista previa ni desde un archivo local.
+
 No subas `config.js` si contiene una URL privada y nunca pongas una clave
 `service_role` de Supabase en el frontend o en el cliente OCR.
 
