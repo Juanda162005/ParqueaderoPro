@@ -136,6 +136,26 @@ def extraer_placa_colombiana(texto: str) -> Optional[str]:
     return max(candidatos, key=calidad_placa)[0] if candidatos else None
 
 
+def textos_ocr_a_candidatos(resultados) -> List[Tuple[str, float]]:
+    """Combina fragmentos OCR de una misma línea antes de validar la placa."""
+    lecturas = []
+    for caja, texto, confianza in resultados:
+        texto_limpio = normalizar_placa(texto)
+        if not texto_limpio:
+            continue
+        x = min(punto[0] for punto in caja)
+        lecturas.append((x, texto_limpio, float(confianza)))
+
+    lecturas.sort(key=lambda item: item[0])
+    candidatos = []
+    if lecturas:
+        texto_completo = "".join(item[1] for item in lecturas)
+        confianza_media = sum(item[2] for item in lecturas) / len(lecturas)
+        candidatos.append((texto_completo, confianza_media))
+        candidatos.extend((texto, confianza) for _, texto, confianza in lecturas)
+    return candidatos
+
+
 def generar_candidatos_placa(texto: str) -> List[Tuple[str, str]]:
     """Corrige confusiones OCR solo cuando la posición exige letra o número."""
     texto = normalizar_placa(texto)
@@ -265,7 +285,7 @@ def procesar_imagen_silencioso(frame):
             except cv2.error as error:
                 print(f"⚠️ EasyOCR descartó una región inválida: {error}")
                 continue
-            for _, texto, confianza in resultados:
+            for texto, confianza in textos_ocr_a_candidatos(resultados):
                 if LPR_DEBUG:
                     print(f"🔎 OCR: {texto!r} ({confianza:.0%})")
                 if confianza < 0.20:
