@@ -32,6 +32,12 @@ Para una prueba remota:
 5. Publicar `frontend` como sitio estático en Vercel.
 6. Usar en el LPR la URL HTTPS de Render como `BACKEND_URL`.
 
+Vercel genera una URL diferente para cada despliegue, pero debes usar el
+dominio estable del proyecto (por ejemplo `https://parqueaderopro.vercel.app`)
+como URL pública para los usuarios y en `CORS_ORIGINS` de Render. Las URLs
+que terminan en `-git-...vercel.app` o contienen un identificador de deploy
+son temporales y no deben configurarse como dominio principal.
+
 No subas `config.js` si contiene una URL privada y nunca pongas una clave
 `service_role` de Supabase en el frontend o en el cliente OCR.
 

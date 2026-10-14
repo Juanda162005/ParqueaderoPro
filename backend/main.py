@@ -831,7 +831,9 @@ def login(user: LoginModel, request: Request, response: Response):
         key="access_token",
         value=token,
         httponly=True,
-        samesite="lax",
+        # El frontend está en Vercel y la API en Render: la cookie debe
+        # viajar en peticiones cross-site HTTPS.
+        samesite="none",
         secure=ENVIRONMENT == "production" or os.getenv("HTTPS", "") == "1",
         path="/",
     )
